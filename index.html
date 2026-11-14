@@ -366,6 +366,7 @@
     padding: 26px 22px 60vh 22px;
     font-size: var(--fs); line-height: 1.75;
     overscroll-behavior: contain;
+    touch-action: pan-y;   /* two fingers resize the text instead of zooming the page */
   }
   #reader { font-family: var(--read-font, var(--serif)); }
   #content { max-width: var(--measure); margin: 0 auto; will-change: transform; }
@@ -2754,7 +2755,7 @@
     const moved = Math.hypot(e.clientX - downX, e.clientY - downY) > 8
       || Math.abs(reader.scrollTop - downTop) > 2;
     const selecting = !(window.getSelection() || { isCollapsed: true }).isCollapsed;
-    if (moved || selecting || !book) return;
+    if (moved || selecting || !book || pinch || performance.now() - pinchEnd < 400) return;
     const now = performance.now();
     const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 60;
     taps = (tapTimer && now - lastTap < DBL_MS && near) ? taps + 1 : 1;
@@ -2767,6 +2768,30 @@
       else { app.classList.remove('nobar'); showChrome(); }
     }, DBL_MS);
   });
+
+  /* ---- pinch to resize the text ----
+     Two fingers spread or pinch change the font size (same as the
+     slider), in whole-pixel steps so the text only reflows when the
+     size actually changes. Any taps from those fingers are ignored. */
+  let pinch = null, pinchEnd = 0;
+  const fingers = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  reader.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2 && book) {
+      pinch = { d: fingers(e.touches) || 1, fs: +font.value };
+      clearTimeout(tapTimer); tapTimer = null; taps = 0;
+    }
+  }, { passive: true });
+  reader.addEventListener('touchmove', (e) => {
+    if (!pinch || e.touches.length < 2) return;
+    e.preventDefault();
+    const want = Math.round(Math.max(+font.min, Math.min(+font.max, pinch.fs * fingers(e.touches) / pinch.d)));
+    if (want !== +font.value) { font.value = want; font.dispatchEvent(new Event('input')); }
+  }, { passive: false });
+  const endPinch = (e) => { if (pinch && e.touches.length < 2) { pinch = null; pinchEnd = performance.now(); } };
+  reader.addEventListener('touchend', endPinch, { passive: true });
+  reader.addEventListener('touchcancel', endPinch, { passive: true });
+  // iPhone Safari's own page-zoom gesture
+  ['gesturestart', 'gesturechange'].forEach((ev) => reader.addEventListener(ev, (e) => e.preventDefault()));
 
   function seekFromEvent(e) {
     const r = hit.getBoundingClientRect();
