@@ -3,6 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+  /* Phones set to a small "display size" report a wide screen, which makes
+     every button tiny. Lay those out at a normal phone width (400) and let
+     the browser scale it up to fill the screen. */
+  (function () {
+    var w = Math.min(screen.width, screen.height);
+    if (w > 440 && w < 760 && matchMedia('(pointer: coarse)').matches) {
+      document.querySelector('meta[name=viewport]').setAttribute('content', 'width=400, viewport-fit=cover');
+    }
+  })();
+</script>
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
