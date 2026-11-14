@@ -1,0 +1,2850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Reader">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<base target="_top">
+<title>Autoscroll Reader</title>
+<style>html,body{margin:0;padding:0;height:100%;background:#000;}</style>
+
+<style>
+  /* ---------------------------------------------------------------
+     Palette. The night theme is the original brass-on-dark; paper is
+     its counterpart, with the accent darkened so it still holds
+     contrast on a light ground. Neutrals are biased warm toward the
+     brass rather than sitting on pure grey.
+     --------------------------------------------------------------- */
+  [data-theme="night"] {
+    --bg: #14110f;
+    --panel: #1e1a17;
+    --panel-2: #262019;
+    --ink: #e8e2d6;
+    --muted: #8a8174;
+    --line: #2c2722;
+    --accent: #d8a657;
+    --accent-ink: #1a1714;
+    --shadow: rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+  [data-theme="paper"] {
+    --bg: #f7f3ea;
+    --panel: #efe8da;
+    --panel-2: #e5dccb;
+    --ink: #241f19;
+    --muted: #6f6455;
+    --line: #ded4c1;
+    --accent: #8a6212;
+    --accent-ink: #fdfaf3;
+    --shadow: rgba(60, 46, 24, 0.18);
+    color-scheme: light;
+  }
+
+
+  /* More palettes: night-reading darks, warm lights, and a true-black OLED. */
+  [data-theme="saffron"] { --bg:#120f1e; --panel:#1e1838; --panel-2:#262046; --ink:#ece3d2; --muted:#b3a488; --line:#332a4d; --accent:#f0a33c; --accent-ink:#1a1206; --shadow:rgba(0,0,0,0.5); color-scheme:dark; }
+  [data-theme="parchment"] { --bg:#fbf3e2; --panel:#f3e6cb; --panel-2:#e9d6b0; --ink:#2c2014; --muted:#6b5638; --line:#dcc18a; --accent:#a8380c; --accent-ink:#fff8ec; --shadow:rgba(60,46,24,0.18); color-scheme:light; }
+  [data-theme="sepia"] { --bg:#f1e5cf; --panel:#e8d9bd; --panel-2:#dccaa9; --ink:#3b2a1a; --muted:#735c42; --line:#d3bf9c; --accent:#8b4a1c; --accent-ink:#fbf3e4; --shadow:rgba(60,46,24,0.18); color-scheme:light; }
+  [data-theme="sky"] { --bg:#eef3f7; --panel:#e2e9f0; --panel-2:#d5dfe9; --ink:#1d2733; --muted:#5a6878; --line:#cfd9e3; --accent:#2c6aa8; --accent-ink:#ffffff; --shadow:rgba(60,46,24,0.18); color-scheme:light; }
+  [data-theme="oled"] { --bg:#000000; --panel:#0e0e0e; --panel-2:#181818; --ink:#ffffff; --muted:#9a9a9a; --line:#232323; --accent:#e0a84a; --accent-ink:#000000; --shadow:rgba(0,0,0,0.5); color-scheme:dark; }
+  [data-theme="amber"] { --bg:#140d04; --panel:#1e1408; --panel-2:#281b0b; --ink:#e8bf7f; --muted:#a0804f; --line:#30220f; --accent:#f0a33c; --accent-ink:#140d04; --shadow:rgba(0,0,0,0.5); color-scheme:dark; }
+  [data-theme="midnight"] { --bg:#0f1724; --panel:#172133; --panel-2:#1e2a40; --ink:#dfe6f0; --muted:#8794aa; --line:#26324a; --accent:#7fb2ff; --accent-ink:#0b1220; --shadow:rgba(0,0,0,0.5); color-scheme:dark; }
+  [data-theme="forest"] { --bg:#121a14; --panel:#19241c; --panel-2:#213024; --ink:#dfe8dc; --muted:#8c9e8a; --line:#263428; --accent:#9dc47a; --accent-ink:#101a0f; --shadow:rgba(0,0,0,0.5); color-scheme:dark; }
+  [data-theme="slate"] { --bg:#22262b; --panel:#2a2f35; --panel-2:#323840; --ink:#d9dde2; --muted:#8f97a0; --line:#3a4048; --accent:#c9a86a; --accent-ink:#1c1f23; --shadow:rgba(0,0,0,0.5); color-scheme:dark; }
+  [data-theme="rose"] { --bg:#1d1418; --panel:#271b21; --panel-2:#30222a; --ink:#f0dfe4; --muted:#a88f97; --line:#3a2a31; --accent:#e79aa8; --accent-ink:#1d1418; --shadow:rgba(0,0,0,0.5); color-scheme:dark; }
+
+  /* Library toolbar: sort + Drive */
+  .lib-tools { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .sort-wrap { display: flex; align-items: center; gap: 8px; font-family: var(--sans); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  #app select {
+    font: 14px var(--sans); color: var(--ink); background: var(--line); border: none; border-radius: 8px;
+    padding: 8px 28px 8px 10px; -webkit-appearance: none; appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat;
+  }
+  .drive-links { display: flex; align-items: center; gap: 8px; }
+  .drive-state { font-family: var(--sans); font-size: 12px; color: var(--muted); }
+  #app a.btn { text-decoration: none; color: var(--ink); background: var(--line); border-radius: 8px; padding: 7px 11px; font-family: var(--sans); font-size: 13px; }
+  #app .drive-links .btn { color: var(--ink); }
+  /* A book that is on Drive but not yet on this device. */
+  .card.remote .cover { opacity: 0.78; }
+  .cloud {
+    position: absolute; right: 7px; bottom: 7px; z-index: 1;
+    font-family: var(--sans); font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em;
+    background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 3px 8px;
+  }
+  #app button.btn.danger { background: #b3261e; color: #fff; }
+  #app button.btn.danger:hover { background: #c53a31; }
+  .remove-note { font-family: var(--sans); font-size: 13px; line-height: 1.5; color: var(--muted); }
+
+  /* Full-screen icon beside the size slider */
+  #app button.fs-icon { align-self: flex-end; width: 42px; height: 42px; padding: 0; font-size: 19px; line-height: 1; display: grid; place-items: center; }
+
+  /* Bottom progress footer */
+  #foot {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none;
+    padding: 24px 16px calc(6px + env(safe-area-inset-bottom));
+    background: linear-gradient(to bottom, transparent, var(--bg) 42%);
+  }
+  .foot-text {
+    display: flex; justify-content: space-between; gap: 12px; margin-bottom: 5px;
+    font-family: var(--sans); font-size: 11.5px; color: var(--muted);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .foot-text span { overflow: hidden; text-overflow: ellipsis; }
+  .foot-track { height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .foot-track i { display: block; height: 100%; width: 0; background: var(--accent); }
+
+  /* ---------------- Library as a list ----------------
+     One slim row per book: a small cover, the title in full, and progress
+     on the right, so names can be read while flicking down the list. */
+  #app .grid, #app .shelf {
+    display: flex; flex-direction: column; gap: 0; overflow: visible;
+    border-top: 1px solid var(--line);
+  }
+  #app .grid { margin-top: 14px !important; }
+  #app .grid .card, #app .shelf .card {
+    display: grid; width: auto; flex: none;
+    grid-template-columns: 40px 1fr auto;
+    grid-template-areas: "cover title pct" "cover author pct" "cover meter meter";
+    column-gap: 14px; row-gap: 2px; align-items: center;
+    padding: 11px 2px; border-bottom: 1px solid var(--line); border-radius: 0;
+  }
+  #app .grid .card:active, #app .shelf .card:active { background: var(--panel); }
+  #app .grid .cover, #app .shelf .cover {
+    grid-area: cover; width: 40px; aspect-ratio: 2 / 3; align-self: center;
+    border-radius: 3px; box-shadow: 0 1px 4px var(--shadow);
+  }
+  #app .grid .cover.gen, #app .shelf .cover.gen { padding: 0; display: grid; place-items: center; }
+  #app .grid .cover.gen::before, #app .shelf .cover.gen::before { width: 3px; }
+  #app .grid .cover.gen > div, #app .shelf .cover.gen > div { display: none; }
+  #app .grid .cover.gen::after, #app .shelf .cover.gen::after {
+    content: attr(data-initial); font-family: var(--serif); font-size: 19px; font-weight: 600;
+    color: var(--ink); padding-left: 3px; width: 100%; text-align: center;
+  }
+  #app .grid .card-title, #app .shelf .card-title { grid-area: title; font-size: 16px; line-height: 1.3; align-self: end; }
+  #app .grid .card-author, #app .shelf .card-author {
+    grid-area: author; align-self: start;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #app .grid .card-meter, #app .shelf .card-meter { grid-area: meter; margin-top: 5px; }
+  #app .grid .card-pct, #app .shelf .card-pct { grid-area: pct; text-align: right; white-space: nowrap; padding-left: 4px; }
+  #app .grid .card.remote .card-pct { max-width: 110px; white-space: normal; line-height: 1.3; }
+  #app .cloud { right: 2px; bottom: 2px; font-size: 9px; padding: 1px 4px; }
+  #app .grid .card-del, #app .shelf .card-del { top: 50%; right: 0; transform: translateY(-50%); }
+  #app .grid.editing .card-pct, #app .shelf.editing .card-pct { visibility: hidden; }
+  #app .section-label { margin: 22px 2px 8px; }
+
+  /* Library search */
+  .search-wrap { position: relative; margin-top: 18px; }
+  #app #libSearch {
+    width: 100%; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    border-radius: 12px; padding: 12px 44px 12px 16px; font: 16px var(--sans);
+    -webkit-appearance: none; appearance: none;
+  }
+  #app #libSearch::-webkit-search-cancel-button { display: none; }
+  #app #searchClear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+  .search-empty { padding: 18px 4px; font-family: var(--sans); font-size: 14px; color: var(--muted); }
+
+  /* Library / Archive tabs */
+  .view-tabs { display: flex; gap: 6px; margin-top: 16px; background: var(--panel); border-radius: 12px; padding: 4px; }
+  #app button.vtab {
+    flex: 1; border: none; background: none; border-radius: 9px; padding: 9px 10px; cursor: pointer;
+    font: 600 14px var(--sans); color: var(--muted);
+  }
+  #app button.vtab[aria-selected="true"] { background: var(--panel-2); color: var(--ink); box-shadow: 0 1px 3px var(--shadow); }
+  #app .card.archived .cover { filter: grayscale(0.6); }
+
+  #content .speaking { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 6px; box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 16%, transparent); }
+  #app button.fs-icon.on { background: var(--accent); color: var(--accent-ink); }
+  .row .fs-icon + .fs-icon { margin-left: -4px; }
+
+  /* Stats */
+  .stats { padding: 14px 16px 10px; font-family: var(--sans); }
+  .stat-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-tile { background: var(--panel-2); border-radius: 12px; padding: 12px; }
+  .stat-tile b { display: block; font-size: 24px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .stat-tile span { font-size: 12px; color: var(--muted); }
+  .stat-h { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.09em; margin: 20px 2px 8px; display: flex; justify-content: space-between; }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 0 2px; }
+  .bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; height: 100%; min-width: 0; }
+  .bar i { display: block; width: 100%; max-width: 34px; background: var(--accent); border-radius: 4px 4px 1px 1px; min-height: 2px; opacity: 0.9; }
+  .bar i.zero { background: var(--line); }
+  .bar em { font-style: normal; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  .bar small { font-size: 10px; color: var(--ink); font-variant-numeric: tabular-nums; min-height: 12px; }
+  .stats-note { font-size: 12px; color: var(--muted); margin-top: 16px; line-height: 1.5; }
+
+  /* Bookmarks */
+  .bm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px 6px; font-family: var(--sans); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.09em; }
+  .bm-head .btn { text-transform: none; letter-spacing: 0; }
+  .bm-item { display: flex; align-items: center; gap: 8px; padding: 0 10px 0 0; }
+  #app .bm-item .toc-item { flex: 1; min-width: 0; }
+  .bm-item .snip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #app .bm-del { background: none; border: none; color: var(--muted); font-size: 18px; padding: 8px; cursor: pointer; }
+  .bm-empty { padding: 4px 18px 10px; font-family: var(--sans); font-size: 13px; color: var(--muted); }
+
+  .rename-row { display: flex; gap: 8px; }
+  #app #renameInput { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; padding: 11px 12px; font: 15px var(--sans); }
+
+  /* Download-all progress */
+  .dl-strip { background: var(--panel); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-family: var(--sans); }
+  .dl-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+  .dl-top span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dl-track { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 9px; }
+  .dl-track i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+
+  /* A back button that is easy to find and hit */
+  #app .row.controls button.back-btn {
+    min-width: 54px; padding: 4px 12px 8px; font-size: 34px; line-height: 1; font-weight: 700;
+    color: var(--accent); background: var(--panel-2); border: 1.5px solid var(--accent);
+  }
+
+  #app .card.loading .card-pct { color: var(--accent); font-variant-numeric: tabular-nums; }
+  #app .card.loading .cover { animation: dlpulse 1.4s ease-in-out infinite; }
+  @keyframes dlpulse { 50% { opacity: 0.45; } }
+
+  /* Keep clear of the clock and the home bar when installed full screen */
+  #app { padding-top: env(safe-area-inset-top); }
+
+  /* Colour sheet */
+  #app { --sel: var(--accent); }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 12px; padding: 14px 16px 6px; }
+  #app button.swatch {
+    background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 11px; text-align: left; cursor: pointer;
+    display: flex; flex-direction: column; gap: 7px; min-height: 86px;
+  }
+  .swatch .aa { font-family: var(--serif); font-size: 24px; line-height: 1; }
+  .swatch .nm { font-family: var(--sans); font-size: 12px; color: var(--muted); }
+  .swatch .ac { height: 4px; width: 55%; border-radius: 2px; background: var(--accent); }
+  #app button.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--sel); }
+  .sheet-sub { font-family: var(--sans); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.09em; padding: 14px 16px 0; }
+  .face-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px 16px 6px; }
+  #app button.face-btn {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
+    padding: 11px 12px; text-align: left; display: flex; flex-direction: column; gap: 3px;
+  }
+  .face-btn .fa { font-size: 21px; line-height: 1.15; }
+  .face-btn .fn { font-family: var(--sans); font-size: 11.5px; color: var(--muted); }
+  #app button.face-btn[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--sel); }
+  #app .row.controls button.btn { padding: 11px 10px; }
+
+  #app {
+    --fs: 20px;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --measure: 65ch;
+
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    background: var(--bg); color: var(--ink);
+    font-family: var(--serif);
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+  #app *, #app *::before, #app *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  #app button, #app input, #app textarea { font: inherit; color: inherit; }
+  #app :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  .view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .hidden { display: none !important; }
+
+  /* ---------------- Library ---------------- */
+  #library { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .lib-inner { width: 100%; max-width: 1000px; margin: 0 auto; padding: 28px 20px 40px; }
+
+  .lib-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 22px;
+  }
+  .lib-head h1 {
+    margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.015em;
+  }
+  .lib-head .count {
+    font-family: var(--sans); font-size: 12px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.09em;
+  }
+  .lib-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .head-actions { display: flex; align-items: center; gap: 10px; }
+  #app button.btn.tiny { padding: 7px 11px; font-size: 13px; border-radius: 8px; }
+
+  .grid {
+    display: grid; gap: 22px 18px;
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  }
+  .card {
+    display: flex; flex-direction: column; gap: 8px;
+    background: none; border: none; padding: 0; text-align: left; cursor: pointer;
+    position: relative;
+  }
+  .cover {
+    aspect-ratio: 2 / 3; width: 100%; border-radius: 3px;
+    overflow: hidden; background: var(--panel-2);
+    box-shadow: 0 2px 10px var(--shadow);
+    display: flex; flex-direction: column; justify-content: space-between;
+    position: relative;
+  }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Generated cover for books with no cover art — the common case. */
+  .cover.gen { padding: 16px 14px; }
+  .cover.gen::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+    background: var(--accent); opacity: 0.85;
+  }
+  .cover.gen .gen-title {
+    font-size: 15px; line-height: 1.28; font-weight: 600;
+    text-wrap: balance; overflow: hidden; color: var(--ink);
+  }
+  .cover.gen .gen-author {
+    font-family: var(--sans); font-size: 10px; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .card:hover .cover, .card:focus-visible .cover { box-shadow: 0 4px 16px var(--shadow); }
+
+  .card-title {
+    font-size: 14px; line-height: 1.35; font-weight: 600;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card-author { font-family: var(--sans); font-size: 11.5px; color: var(--muted); }
+  .card-meter { height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .card-meter i { display: block; height: 100%; background: var(--accent); }
+  .card-pct {
+    font-family: var(--sans); font-size: 11px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  /* Shown by the Edit toggle rather than on hover — a phone has no hover,
+     which left books impossible to remove on the device this is built for. */
+  .card-del {
+    position: absolute; top: 6px; right: 6px; width: 30px; height: 30px;
+    border-radius: 50%; border: none; cursor: pointer; line-height: 1;
+    background: var(--panel); color: var(--ink);
+    font-size: 16px; display: none; place-items: center;
+    box-shadow: 0 1px 6px var(--shadow);
+  }
+  .grid.editing .card-del, .shelf.editing .card-del { display: grid; }
+  .grid.editing .card, .shelf.editing .card { cursor: default; }
+
+  /* Continue reading */
+  .section-label {
+    font-family: var(--sans); font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.09em; margin: 26px 2px 10px;
+  }
+  .shelf {
+    display: flex; gap: 16px; overflow-x: auto; padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+  }
+  .shelf .card { flex: 0 0 118px; width: 118px; }
+
+  .drop {
+    border: 1px dashed var(--line); border-radius: 12px;
+    padding: 44px 24px; text-align: center; color: var(--muted);
+    font-family: var(--sans); font-size: 14px; line-height: 1.6;
+  }
+  .drop strong { color: var(--ink); font-weight: 600; }
+  #library.dragging .drop { border-color: var(--accent); color: var(--ink); }
+
+  .notice {
+    font-family: var(--sans); font-size: 13.5px; line-height: 1.55;
+    background: var(--panel); border-left: 3px solid var(--accent);
+    padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 20px;
+  }
+
+  /* ---------------- Reader ---------------- */
+  #progress { position: relative; flex: none; height: 3px; background: var(--line); }
+  #progressFill { height: 100%; width: 0; background: var(--accent); }
+  #progressHit { position: absolute; left: 0; right: 0; top: -10px; bottom: -10px; cursor: pointer; }
+
+  #reader {
+    flex: 1; overflow-y: auto; position: relative;
+    padding: 26px 22px 60vh 22px;
+    font-size: var(--fs); line-height: 1.75;
+    overscroll-behavior: contain;
+  }
+  #reader { font-family: var(--read-font, var(--serif)); }
+  #content { max-width: var(--measure); margin: 0 auto; will-change: transform; }
+  #content p { margin: 0 0 1em; text-align: initial; }
+  #content h1, #content h2, #content h3, #content h4 {
+    font-size: 1.12em; font-weight: 600; line-height: 1.35;
+    margin: 1.9em 0 0.7em; text-wrap: balance;
+  }
+  #content .chapter-start { margin-top: 0; }
+  #content blockquote { margin: 1em 0; padding-left: 1em; border-left: 2px solid var(--line); color: var(--muted); }
+  #content img { max-width: 100%; height: auto; display: block; margin: 1.2em auto; border-radius: 2px; }
+  #content hr { border: none; border-top: 1px solid var(--line); margin: 2em 0; }
+  #content ul, #content ol { margin: 0 0 1em; padding-left: 1.4em; }
+  #content pre { overflow-x: auto; font-size: 0.85em; }
+  #content table { display: block; overflow-x: auto; border-collapse: collapse; }
+  #content .plain { white-space: pre-wrap; overflow-wrap: break-word; }
+  .chapter + .chapter { border-top: 1px solid var(--line); padding-top: 2em; margin-top: 2.4em; }
+
+  /* ---------------- Control bar ---------------- */
+  /* Overlaid rather than in flow: hiding it must not resize the reader,
+     because a resize reflows the text and moves the line you are on. */
+  #readerView { position: relative; }
+  #bar {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
+    background: var(--panel); border-top: 1px solid var(--line);
+    padding: 9px 14px calc(11px + env(safe-area-inset-bottom)) 14px;
+    display: flex; flex-direction: column; gap: 9px;
+    transition: transform 0.26s ease, opacity 0.26s ease;
+  }
+  #app.immersive #bar {
+    transform: translateY(110%); opacity: 0; pointer-events: none;
+  }
+  .bar-inner { width: 100%; max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 9px; }
+  #status {
+    font-family: var(--sans); font-size: 12px; color: var(--muted);
+    text-align: center; min-height: 15px; font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .row.controls { gap: 8px; }
+
+  #app button.btn {
+    background: var(--line); border: none; border-radius: 10px;
+    padding: 11px 13px; font-family: var(--sans); font-size: 15px;
+    cursor: pointer; flex: none;
+  }
+  #app button.btn:hover { background: var(--panel-2); }
+  #app button.btn:active { transform: translateY(1px); }
+  #app button.primary {
+    background: var(--accent); color: var(--accent-ink); font-weight: 700;
+    flex: 1; font-size: 17px; padding: 13px;
+  }
+  #app button.primary:hover { filter: brightness(1.06); background: var(--accent); }
+
+  .slider-block { flex: 1; min-width: 0; }
+  .slider-label {
+    display: flex; justify-content: space-between; gap: 8px;
+    font-family: var(--sans); font-size: 11px; color: var(--muted);
+    margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .slider-label b { font-weight: 600; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; }
+  #app input[type=range] {
+    width: 100%; -webkit-appearance: none; appearance: none; margin: 0;
+    height: 6px; border-radius: 3px; background: var(--line); outline: none;
+  }
+  #app input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 50%; background: var(--accent); cursor: pointer;
+  }
+  #app input[type=range]::-moz-range-thumb {
+    width: 22px; height: 22px; border: none; border-radius: 50%; background: var(--accent); cursor: pointer;
+  }
+
+  /* ---------------- Sheets (contents, paste) ---------------- */
+  .sheet {
+    position: absolute; inset: 0; z-index: 5;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  @supports not (background: color-mix(in srgb, red 50%, blue)) {
+    .sheet { background: var(--bg); }
+  }
+  .sheet-body {
+    background: var(--panel); border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0; max-height: 78%;
+    display: flex; flex-direction: column; box-shadow: 0 -6px 24px var(--shadow);
+  }
+  .sheet-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 16px; border-bottom: 1px solid var(--line); flex: none;
+  }
+  .sheet-head h2 {
+    margin: 0; font-family: var(--sans); font-size: 13px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted);
+  }
+  .sheet-scroll { overflow-y: auto; padding: 6px 0 calc(10px + env(safe-area-inset-bottom)); }
+  .toc-item {
+    display: flex; width: 100%; gap: 12px; align-items: baseline;
+    background: none; border: none; cursor: pointer; text-align: left;
+    padding: 11px 18px; font-size: 15px; line-height: 1.4;
+  }
+  .toc-item:hover { background: var(--panel-2); }
+  .toc-item[aria-current="true"] { color: var(--accent); font-weight: 600; }
+  .toc-item .n {
+    font-family: var(--sans); font-size: 11px; color: var(--muted);
+    font-variant-numeric: tabular-nums; flex: none; min-width: 2ch;
+  }
+
+  .paste-body { padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; }
+  #pasteText {
+    width: 100%; height: 40vh; resize: none; border: 1px solid var(--line);
+    background: var(--bg); border-radius: 10px; padding: 14px;
+    font-family: var(--serif); font-size: 16px; line-height: 1.6;
+  }
+  #pasteTitle {
+    width: 100%; border: 1px solid var(--line); background: var(--bg);
+    border-radius: 10px; padding: 11px 14px; font-family: var(--sans); font-size: 15px;
+  }
+  #app ::placeholder { color: var(--muted); }
+
+  #busy {
+    position: absolute; inset: 0; z-index: 9; display: grid; place-items: center;
+    background: var(--bg); font-family: var(--sans); font-size: 14px; color: var(--muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #app *, #app *::before, #app *::after { transition: none !important; animation: none !important; }
+  }
+  @media (max-width: 380px) {
+    .grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 18px 14px; }
+    .lib-head h1 { font-size: 25px; }
+  }
+</style>
+</head>
+<body>
+<div id="app" data-theme="oled" data-face="serif">
+
+  <!-- ============ Library ============ -->
+  <section id="library" class="view">
+    <div class="lib-inner">
+      <div class="lib-head">
+        <h1>Library</h1>
+        <div class="head-actions">
+          <span class="count" id="libCount"></span>
+          <button class="btn tiny" id="statsBtn">Stats</button>
+          <button class="btn tiny hidden" id="fsBtn">Full screen</button>
+          <button class="btn tiny hidden" id="editBtn">Edit</button>
+        </div>
+      </div>
+      <div id="libNotice" class="notice hidden"></div>
+      <div id="dlStrip" class="dl-strip hidden">
+        <div class="dl-top"><span id="dlText"></span><button class="btn tiny" id="dlStop">Stop</button></div>
+        <div class="dl-track"><i id="dlFill"></i></div>
+      </div>
+      <div class="lib-actions">
+        <button class="btn primary" id="openBtn" style="flex:none">Open EPUB</button>
+        <button class="btn hidden" id="dlAllBtn">⬇ Download all</button>
+        <button class="btn" id="pasteBtn">Paste text</button>
+        <button class="btn" id="themeBtn2">Colours &amp; fonts</button>
+      </div>
+      <div class="search-wrap">
+        <input id="libSearch" type="search" placeholder="Search your library" autocomplete="off" aria-label="Search your library">
+        <button class="btn tiny hidden" id="searchClear" aria-label="Clear search">✕</button>
+      </div>
+      <div class="lib-tools">
+        <label class="sort-wrap">
+          <span>Sort</span>
+          <select id="sortSel" aria-label="Sort books">
+            <option value="recent">Recently read</option>
+            <option value="name">Name (A–Z)</option>
+            <option value="author">Author</option>
+            <option value="drive">Added to Drive</option>
+            <option value="local">Downloaded to this device</option>
+            <option value="progress">Most read</option>
+            <option value="unread">Not started first</option>
+            <option value="size">Size (largest)</option>
+          </select>
+        </label>
+        <span class="drive-links hidden" id="driveLinks">
+          <span class="drive-state" id="driveState"></span>
+          <button class="btn tiny" id="driveRefresh" aria-label="Sync with Google Drive">↻ Sync Drive</button>
+          <a class="btn tiny" target="_blank" rel="noopener"
+             href="https://drive.google.com/drive/folders/1PDgmGlytDOt4sfJ9ngcHDwUkOw9OFa2g">Drive folder</a>
+        </span>
+      </div>
+      <div class="view-tabs hidden" id="viewTabs" role="tablist">
+        <button class="vtab" id="tabLibrary" role="tab" aria-selected="true">Library</button>
+        <button class="vtab" id="tabArchive" role="tab" aria-selected="false">Archive</button>
+      </div>
+      <div id="continueWrap" class="hidden">
+        <div class="section-label">Continue reading</div>
+        <div class="shelf" id="shelf"></div>
+        <div class="section-label" id="allLabel">All books</div>
+      </div>
+      <div class="grid" id="grid" style="margin-top:22px"></div>
+      <div class="drop hidden" id="drop">
+        <strong>No books yet.</strong><br>
+        Drop an EPUB here, or use Open EPUB above.<br>
+        Everything stays on this device.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Reader ============ -->
+  <section id="readerView" class="view hidden">
+    <div id="progress">
+      <div id="progressFill"></div>
+      <div id="progressHit" title="Drag to move through the book"></div>
+    </div>
+
+    <div id="reader" tabindex="0"><div id="content"></div></div>
+
+    <!-- Always-on progress footer; the control bar covers it when shown. -->
+    <div id="foot" aria-hidden="true">
+      <div class="foot-text"><span id="footLeft"></span><span id="footRight"></span></div>
+      <div class="foot-track"><i id="footFill"></i></div>
+    </div>
+
+    <div id="bar">
+      <div class="bar-inner">
+        <div id="status"></div>
+        <div class="row">
+          <div class="slider-block">
+            <div class="slider-label"><span>Speed</span><b id="speedVal"></b></div>
+            <input type="range" id="speed" min="1" max="100" value="45" aria-label="Reading speed">
+          </div>
+          <div class="slider-block">
+            <div class="slider-label"><span>Size</span><b id="fontVal"></b></div>
+            <input type="range" id="font" min="14" max="40" value="20" aria-label="Text size">
+          </div>
+          <button class="btn fs-icon" id="ttsBtn" aria-label="Read aloud" title="Read aloud">🔊</button>
+          <button class="btn fs-icon" id="fsBtn2" aria-label="Full screen" title="Full screen">⛶</button>
+        </div>
+        <div class="row controls">
+          <button class="btn back-btn" id="libBtn" aria-label="Back to library" title="Back to library">‹</button>
+          <button class="btn" id="tocBtn" aria-label="Contents" title="Contents">≡</button>
+          <button class="btn primary" id="playBtn">▶ Play</button>
+          <button class="btn" id="backBtn" aria-label="Back three lines" title="Back three lines">↑</button>
+          <button class="btn" id="fwdBtn" aria-label="Forward three lines" title="Forward three lines">↓</button>
+          <button class="btn" id="themeBtn" aria-label="Colours" title="Colours">◐</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Contents sheet ============ -->
+  <div id="tocSheet" class="sheet hidden">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h2>Contents</h2>
+        <button class="btn" id="tocClose">Close</button>
+      </div>
+      <div class="sheet-scroll">
+        <div class="bm-head">
+          <span>Bookmarks</span>
+          <button class="btn tiny" id="bmAdd">＋ Bookmark this spot</button>
+        </div>
+        <div id="bmList"></div>
+        <div class="bm-head"><span>Chapters</span></div>
+        <div id="tocList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Colour sheet ============ -->
+  <div id="themeSheet" class="sheet hidden">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h2>Colours &amp; fonts</h2>
+        <button class="btn" id="themeClose">Done</button>
+      </div>
+      <div class="sheet-scroll">
+        <div class="swatches" id="swatches"></div>
+        <div class="sheet-sub">Reading font</div>
+        <div class="face-grid" id="faceGrid">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Remove sheet ============ -->
+  <div id="removeSheet" class="sheet hidden">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h2 id="removeTitle">Remove</h2>
+        <button class="btn" id="removeCancel">Cancel</button>
+      </div>
+      <div class="paste-body">
+        <button class="btn primary hidden" id="archiveBtn" style="flex:none">Move to Archive</button>
+        <div class="rename-row hidden" id="renameRow">
+          <input id="renameInput" type="text" autocomplete="off" placeholder="New name">
+          <button class="btn" id="renameSave">Save</button>
+        </div>
+        <button class="btn hidden" id="renameBtn" style="flex:none">Rename</button>
+        <button class="btn" id="removeLocal" style="flex:none">Remove from this device</button>
+        <button class="btn danger" id="removeDrive" style="flex:none">Remove here and delete from Drive</button>
+        <div class="remove-note" id="removeNote"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Finished sheet ============ -->
+  <div id="doneSheet" class="sheet hidden">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h2>Finished</h2>
+        <button class="btn" id="doneKeep">Not now</button>
+      </div>
+      <div class="paste-body">
+        <div class="remove-note" id="doneNote"></div>
+        <button class="btn primary" id="doneArchive" style="flex:none">Move to Archive</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Stats sheet ============ -->
+  <div id="statsSheet" class="sheet hidden">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h2>Reading stats</h2>
+        <button class="btn" id="statsClose">Close</button>
+      </div>
+      <div class="sheet-scroll"><div id="statsBody" class="stats"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ Paste sheet ============ -->
+  <div id="pasteSheet" class="sheet hidden">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h2>Paste text</h2>
+        <button class="btn" id="pasteClose">Cancel</button>
+      </div>
+      <div class="paste-body">
+        <input id="pasteTitle" type="text" placeholder="Title (optional)">
+        <textarea id="pasteText" placeholder="Paste anything you want to read…"></textarea>
+        <button class="btn primary" id="pasteSave" style="flex:none">Add to library</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept=".epub,application/epub+zip" multiple hidden>
+  <div id="busy" class="hidden">Opening…</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const app = $('app');
+  const reader = $('reader'), content = $('content');
+  const libraryView = $('library'), readerView = $('readerView');
+  const playBtn = $('playBtn'), speed = $('speed'), font = $('font');
+  const speedVal = $('speedVal'), fontVal = $('fontVal'), statusEl = $('status');
+  const fill = $('progressFill'), hit = $('progressHit');
+  const footFill = $('footFill'), footLeft = $('footLeft'), footRight = $('footRight');
+  const grid = $('grid'), drop = $('drop'), libCount = $('libCount'), libNotice = $('libNotice');
+  const shelf = $('shelf'), continueWrap = $('continueWrap');
+  const editBtn = $('editBtn'), fsBtn = $('fsBtn');
+  const fileInput = $('fileInput'), busy = $('busy');
+  const tocSheet = $('tocSheet'), tocList = $('tocList');
+  const pasteSheet = $('pasteSheet'), themeSheet = $('themeSheet'), removeSheet = $('removeSheet'), doneSheet = $('doneSheet'), statsSheet = $('statsSheet');
+
+  /* =====================================================================
+     ZIP reader. An EPUB is a ZIP, and the artifact sandbox blocks external
+     scripts, so the central directory is walked by hand and DEFLATE is
+     handed to the platform's DecompressionStream.
+     ===================================================================== */
+  const utf8 = new TextDecoder('utf-8');
+
+  async function unzip(buffer) {
+    const u8 = new Uint8Array(buffer);
+    const dv = new DataView(buffer);
+
+    // The end-of-central-directory record sits in the last 64KB, after an
+    // optional trailing comment, so scan backwards for its signature.
+    let eocd = -1;
+    const floor = Math.max(0, u8.length - 22 - 0xffff);
+    for (let i = u8.length - 22; i >= floor; i--) {
+      if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Err('That file is not a ZIP archive, so it cannot be an EPUB.');
+
+    const count = dv.getUint16(eocd + 10, true);
+    let off = dv.getUint32(eocd + 16, true);
+    const entries = new Map();
+    for (let i = 0; i < count && off + 46 <= u8.length; i++) {
+      if (dv.getUint32(off, true) !== 0x02014b50) break;
+      const method = dv.getUint16(off + 10, true);
+      const compSize = dv.getUint32(off + 20, true);
+      const nameLen = dv.getUint16(off + 28, true);
+      const extraLen = dv.getUint16(off + 30, true);
+      const commentLen = dv.getUint16(off + 32, true);
+      const localOff = dv.getUint32(off + 42, true);
+      const name = utf8.decode(u8.subarray(off + 46, off + 46 + nameLen));
+      entries.set(name, { method, compSize, localOff });
+      off += 46 + nameLen + extraLen + commentLen;
+    }
+
+    async function bytes(name) {
+      const e = entries.get(name);
+      if (!e) return null;
+      // Sizes come from the central directory; the local header's copies are
+      // zero when the entry was written with a trailing data descriptor.
+      const nameLen = dv.getUint16(e.localOff + 26, true);
+      const extraLen = dv.getUint16(e.localOff + 28, true);
+      const start = e.localOff + 30 + nameLen + extraLen;
+      const raw = u8.subarray(start, start + e.compSize);
+      if (e.method === 0) return raw;
+      if (e.method !== 8) throw new Err('This EPUB uses a compression method this reader cannot read.');
+      const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+    const text = async (name) => { const b = await bytes(name); return b ? utf8.decode(b) : null; };
+    return { entries, bytes, text, has: (n) => entries.has(n) };
+  }
+
+  /* Errors carrying a message that is safe to show the reader. */
+  function Err(msg) { const e = new Error(msg); e.friendly = true; return e; }
+
+  /* =====================================================================
+     EPUB parsing
+     ===================================================================== */
+  const xml = (str) => new DOMParser().parseFromString(str, 'application/xml');
+  const tags = (node, local) => Array.from(node.getElementsByTagNameNS('*', local));
+  const tag1 = (node, local) => tags(node, local)[0] || null;
+
+  function resolvePath(base, rel) {
+    rel = decodeURIComponent(String(rel || '').split('#')[0].trim());
+    if (!rel) return '';
+    const stack = base.split('/').slice(0, -1);
+    for (const part of rel.split('/')) {
+      if (!part || part === '.') continue;
+      if (part === '..') stack.pop(); else stack.push(part);
+    }
+    return stack.join('/');
+  }
+
+  const MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp' };
+  function b64(u8) {
+    let s = '';
+    for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  function dataUri(u8, path) {
+    const ext = (path.split('.').pop() || '').toLowerCase();
+    return 'data:' + (MIME[ext] || 'image/jpeg') + ';base64,' + b64(u8);
+  }
+
+  const IMG_MAX = 1.2e6;    // per image
+  const IMG_BUDGET = 9e6;   // per book, so the library stays a sane size
+
+  async function parseEpub(buffer, fallbackTitle) {
+    if (typeof DecompressionStream === 'undefined') {
+      throw new Err('This browser cannot decompress EPUB files. Try a current version of Safari, Chrome, or Firefox.');
+    }
+    const zip = await unzip(buffer);
+    if (zip.has('META-INF/encryption.xml')) {
+      throw new Err('This book is DRM-protected, so its text cannot be opened.');
+    }
+
+    const containerXml = await zip.text('META-INF/container.xml');
+    if (!containerXml) throw new Err('This EPUB is missing its container.xml, so there is no way to find the book inside it.');
+    const rootfile = tag1(xml(containerXml), 'rootfile');
+    const opfPath = rootfile && rootfile.getAttribute('full-path');
+    if (!opfPath) throw new Err('This EPUB does not say where its contents are. The file may be damaged.');
+
+    const opfText = await zip.text(opfPath);
+    if (!opfText) throw new Err('This EPUB points at a contents file that is not in the archive.');
+    const opf = xml(opfText);
+
+    const meta = tag1(opf, 'metadata') || opf;
+    const title = (tag1(meta, 'title') || {}).textContent || fallbackTitle || 'Untitled';
+    const author = (tag1(meta, 'creator') || {}).textContent || '';
+
+    // manifest: id -> { path, type, props }
+    const items = new Map(), byPath = new Map();
+    for (const it of tags(opf, 'item')) {
+      const id = it.getAttribute('id');
+      const href = it.getAttribute('href');
+      if (!id || !href) continue;
+      const rec = {
+        id, path: resolvePath(opfPath, href),
+        type: it.getAttribute('media-type') || '',
+        props: it.getAttribute('properties') || ''
+      };
+      items.set(id, rec);
+      byPath.set(rec.path, rec);
+    }
+
+    // Reading order. linear="no" marks material outside the main flow.
+    const spineEl = tag1(opf, 'spine');
+    const spine = [];
+    for (const ref of tags(spineEl || opf, 'itemref')) {
+      if (ref.getAttribute('linear') === 'no') continue;
+      const it = items.get(ref.getAttribute('idref'));
+      if (it && /html|xml/.test(it.type)) spine.push(it);
+    }
+    if (!spine.length) throw new Err('This EPUB lists no readable chapters.');
+
+    // Chapter titles, from the EPUB 3 nav document or the EPUB 2 NCX.
+    const titles = new Map();
+    const navItem = Array.from(items.values()).find((i) => /\bnav\b/.test(i.props));
+    if (navItem) {
+      const navText = await zip.text(navItem.path);
+      if (navText) {
+        const nav = xml(navText);
+        const toc = tags(nav, 'nav').find((n) => (n.getAttribute('epub:type') || n.getAttributeNS('http://www.idpf.org/2007/ops', 'type') || '').includes('toc'))
+          || tag1(nav, 'nav') || nav;
+        for (const a of tags(toc, 'a')) {
+          const p = resolvePath(navItem.path, a.getAttribute('href'));
+          const label = a.textContent.trim();
+          if (p && label && !titles.has(p)) titles.set(p, label);
+        }
+      }
+    }
+    if (!titles.size) {
+      const ncx = Array.from(items.values()).find((i) => /ncx/.test(i.type) || /\.ncx$/.test(i.path));
+      const ncxText = ncx && await zip.text(ncx.path);
+      if (ncxText) {
+        for (const np of tags(xml(ncxText), 'navPoint')) {
+          const contentEl = tag1(np, 'content');
+          const labelEl = tag1(np, 'text');
+          if (!contentEl || !labelEl) continue;
+          const p = resolvePath(ncx.path, contentEl.getAttribute('src'));
+          const label = labelEl.textContent.trim();
+          if (p && label && !titles.has(p)) titles.set(p, label);
+        }
+      }
+    }
+
+    // Cover art.
+    let cover = null;
+    let coverItem = Array.from(items.values()).find((i) => /cover-image/.test(i.props));
+    if (!coverItem) {
+      const m = tags(meta, 'meta').find((x) => x.getAttribute('name') === 'cover');
+      if (m) coverItem = items.get(m.getAttribute('content'));
+    }
+    if (coverItem && /image/.test(coverItem.type)) {
+      const b = await zip.bytes(coverItem.path);
+      if (b && b.length < 3e6) cover = dataUri(b, coverItem.path);
+    }
+
+    // Chapters.
+    let imgBudget = IMG_BUDGET;
+    const imgCache = new Map();
+    const chapters = [];
+    let words = 0;
+
+    for (let i = 0; i < spine.length; i++) {
+      const item = spine[i];
+      const raw = await zip.text(item.path);
+      if (!raw) continue;
+      const doc = new DOMParser().parseFromString(raw, 'application/xhtml+xml');
+      const body = doc.querySelector('body')
+        || new DOMParser().parseFromString(raw, 'text/html').querySelector('body');
+      if (!body) continue;
+
+      const out = document.createElement('div');
+      await sanitizeInto(body, out, {
+        base: item.path,
+        image: async (src) => {
+          const p = resolvePath(item.path, src);
+          if (imgCache.has(p)) return imgCache.get(p);
+          const rec = byPath.get(p);
+          if (!rec || !/image/.test(rec.type)) return null;
+          const b = await zip.bytes(p);
+          if (!b || b.length > IMG_MAX || b.length > imgBudget) return null;
+          imgBudget -= b.length;
+          const uri = dataUri(b, p);
+          imgCache.set(p, uri);
+          return uri;
+        }
+      });
+
+      const text = out.textContent.replace(/\s+/g, ' ').trim();
+      if (!text && !out.querySelector('img')) continue;
+      words += text ? text.split(' ').length : 0;
+
+      let name = titles.get(item.path);
+      if (!name) {
+        const h = out.querySelector('h1, h2, h3, h4');
+        name = h && h.textContent.trim();
+      }
+      chapters.push({ title: name || ('Chapter ' + (chapters.length + 1)), html: out.innerHTML });
+    }
+
+    if (!chapters.length) throw new Err('This EPUB has no readable text in it.');
+    return { title: title.trim(), author: author.trim(), cover, chapters, words };
+  }
+
+  /* ---------------------------------------------------------------
+     Sanitizer. Book markup is untrusted and also carries its own
+     styling, which would fight the reader's. Keep a structural subset,
+     drop every attribute, and re-point images at inlined data.
+     --------------------------------------------------------------- */
+  const KEEP = new Set(['P', 'DIV', 'SPAN', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'EM', 'I', 'STRONG', 'B',
+    'BLOCKQUOTE', 'UL', 'OL', 'LI', 'BR', 'HR', 'IMG', 'FIGURE', 'FIGCAPTION', 'SUP', 'SUB', 'SMALL',
+    'CODE', 'PRE', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH', 'CITE', 'Q', 'DL', 'DT', 'DD', 'SECTION',
+    'ARTICLE', 'HEADER', 'FOOTER', 'ASIDE', 'MAIN', 'NAV', 'U', 'S', 'MARK', 'RUBY', 'RT', 'RP']);
+  const DROP = new Set(['SCRIPT', 'STYLE', 'LINK', 'META', 'IFRAME', 'OBJECT', 'EMBED', 'AUDIO', 'VIDEO', 'SVG', 'CANVAS', 'FORM', 'INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'TITLE', 'HEAD']);
+  const UNWRAP = new Set(['A', 'BODY', 'HTML', 'FONT', 'CENTER', 'BIG', 'TT', 'ABBR', 'TIME', 'BDI', 'BDO', 'INS', 'DEL', 'LABEL', 'PICTURE', 'TEMPLATE', 'DETAILS', 'SUMMARY']);
+
+  async function sanitizeInto(src, dest, ctx) {
+    for (const node of Array.from(src.childNodes)) {
+      if (node.nodeType === 3) { dest.appendChild(document.createTextNode(node.nodeValue)); continue; }
+      if (node.nodeType !== 1) continue;
+      const name = node.tagName.toUpperCase();
+      if (DROP.has(name)) continue;
+
+      if (name === 'IMG') {
+        const uri = await ctx.image(node.getAttribute('src') || '');
+        if (!uri) continue;
+        const img = document.createElement('img');
+        img.src = uri;
+        img.alt = node.getAttribute('alt') || '';
+        img.loading = 'lazy';
+        dest.appendChild(img);
+        continue;
+      }
+      if (UNWRAP.has(name) || !KEEP.has(name)) {
+        await sanitizeInto(node, dest, ctx); // keep the words, drop the wrapper
+        continue;
+      }
+      const el = document.createElement(name.toLowerCase()); // no attributes carried over
+      await sanitizeInto(node, el, ctx);
+      dest.appendChild(el);
+    }
+  }
+
+  /* =====================================================================
+     Storage. Metadata lives in one store so the library list stays cheap
+     to read; chapter text lives in another and is only loaded on open.
+     ===================================================================== */
+  const DB_NAME = 'autoscroll-reader', BOOKS = 'books', TEXT = 'text';
+  let dbPromise = null;
+  function db() {
+    if (!dbPromise) {
+      dbPromise = new Promise((res, rej) => {
+        const r = indexedDB.open(DB_NAME, 1);
+        r.onupgradeneeded = () => {
+          const d = r.result;
+          if (!d.objectStoreNames.contains(BOOKS)) d.createObjectStore(BOOKS, { keyPath: 'id' });
+          if (!d.objectStoreNames.contains(TEXT)) d.createObjectStore(TEXT, { keyPath: 'id' });
+        };
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+    }
+    return dbPromise;
+  }
+  async function tx(store, mode, fn) {
+    const d = await db();
+    return new Promise((res, rej) => {
+      const t = d.transaction(store, mode);
+      const req = fn(t.objectStore(store));
+      t.oncomplete = () => res(req && req.result);
+      t.onerror = () => rej(t.error);
+      t.onabort = () => rej(t.error);
+    });
+  }
+  /* Some browsers refuse storage outright — Firefox on a file:// page, and
+     private windows generally. Reading a book should not depend on being
+     able to remember it, so fall back to memory and say so once. */
+  const MEM = { books: new Map(), text: new Map() };
+  let memoryOnly = false;
+  function noStorage() {
+    if (memoryOnly) return;
+    memoryOnly = true;
+    showNotice('This browser will not let the page save books here, so your library empties when you close the tab. Reading works as normal.');
+  }
+  async function idbOr(fallback, run) {
+    if (!memoryOnly) {
+      try { return await run(); } catch (_) { noStorage(); }
+    }
+    return fallback();
+  }
+
+  const putBook = (b) => idbOr(() => MEM.books.set(b.id, b),
+    () => tx(BOOKS, 'readwrite', (s) => s.put(b)));
+  const putText = (t) => idbOr(() => MEM.text.set(t.id, t),
+    () => tx(TEXT, 'readwrite', (s) => s.put(t)));
+  const getBook = (id) => idbOr(() => MEM.books.get(id),
+    () => tx(BOOKS, 'readonly', (s) => s.get(id)));
+  const getText = (id) => idbOr(() => MEM.text.get(id),
+    () => tx(TEXT, 'readonly', (s) => s.get(id)));
+  const allBooks = () => idbOr(() => Array.from(MEM.books.values()),
+    () => tx(BOOKS, 'readonly', (s) => s.getAll()));
+  const delBook = (id) => idbOr(
+    () => { MEM.books.delete(id); MEM.text.delete(id); },
+    () => Promise.all([
+      tx(BOOKS, 'readwrite', (s) => s.delete(id)),
+      tx(TEXT, 'readwrite', (s) => s.delete(id))
+    ]));
+
+  function bookId(title, author, size) {
+    const s = title + '\u0000' + author + '\u0000' + size;
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(36) + '-' + size.toString(36);
+  }
+
+  /* Settings that are not per-book. */
+  const SETTINGS = 'autoscroll-reader/settings';
+  const settings = Object.assign(
+    { speed: 45, font: 20, theme: 'oled', face: 'iowan', sort: 'recent' },
+    (() => { try { return JSON.parse(localStorage.getItem(SETTINGS) || '{}'); } catch (_) { return {}; } })()
+  );
+  /* Reading positions get their own tiny record. Saving them used to
+     rewrite the whole book entry, cover image included, every second or so. */
+  const PROGRESS = 'autoscroll-reader/progress';
+  const progMap = (() => { try { return JSON.parse(localStorage.getItem(PROGRESS) || '{}') || {}; } catch (_) { return {}; } })();
+  function writeProg(id, p) {
+    if (p) progMap[id] = p; else delete progMap[id];
+    try { localStorage.setItem(PROGRESS, JSON.stringify(progMap)); return true; } catch (_) { return false; }
+  }
+  function saveSettings() {
+    try { localStorage.setItem(SETTINGS, JSON.stringify(settings)); } catch (_) {}
+  }
+
+  /* =====================================================================
+     Theme
+     ===================================================================== */
+  const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  function pageTheme() {
+    const stamped = document.documentElement.getAttribute('data-theme');
+    if (stamped === 'dark' || stamped === 'light') return stamped === 'dark' ? 'night' : 'paper';
+    return darkQuery.matches ? 'night' : 'paper';
+  }
+  function applyTheme() {
+    const t = settings.theme === 'auto' ? pageTheme() : settings.theme;
+    app.setAttribute('data-theme', t);
+    app.setAttribute('data-face', settings.face);
+    const bg = getComputedStyle(app).getPropertyValue('--bg').trim();
+    if (themeMeta && bg) themeMeta.content = bg;
+    document.documentElement.style.background = bg || '';
+    if (typeof markSwatches === 'function') markSwatches();
+  }
+  darkQuery.addEventListener('change', applyTheme);
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  /* Reading fonts. The free web fonts come from Google Fonts and are only
+     fetched when picked (previews fetch just the few letters they show);
+     until one arrives, or offline, the text falls back to the next font in
+     its stack. "Apple New York" and "Iowan" are built into iPhones. */
+  const FACES = {
+    iowan:     { label: 'Iowan Old Style', note: 'Apple Books default', stack: '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif' },
+    newyork:   { label: 'New York', note: 'Apple system serif', stack: 'ui-serif, "New York", Georgia, serif' },
+    source:    { label: 'Source Serif', note: 'Closest to Claude', stack: '"Source Serif 4", Georgia, serif', g: 'Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400' },
+    literata:  { label: 'Literata', note: 'Made for e-books', stack: 'Literata, Georgia, serif', g: 'Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400' },
+    charis:    { label: 'Charis', note: 'Charter-style, sturdy', stack: '"Charis SIL", Charter, Georgia, serif', g: 'Charis+SIL:ital,wght@0,400;0,700;1,400' },
+    lora:      { label: 'Lora', note: 'Soft, warm serif', stack: 'Lora, Georgia, serif', g: 'Lora:ital,wght@0,400;0,600;1,400' },
+    garamond:  { label: 'EB Garamond', note: 'Classic book face', stack: '"EB Garamond", Garamond, Georgia, serif', g: 'EB+Garamond:ital,wght@0,400;0,600;1,400' },
+    atkinson:  { label: 'Atkinson Hyperlegible', note: 'Easiest on tired eyes', stack: '"Atkinson Hyperlegible", var(--sans)', g: 'Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400' },
+    inter:     { label: 'Inter', note: 'Clean sans-serif', stack: 'Inter, var(--sans)', g: 'Inter:ital,opsz,wght@0,14..32,400;0,14..32,600;1,14..32,400' },
+    system:    { label: 'System sans', note: "Your phone's own", stack: 'var(--sans)' }
+  };
+  const faceGrid = $('faceGrid');
+  const loadedFaces = new Set();
+  function addSheet(href) {
+    try {
+      const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href;
+      document.head.appendChild(l);
+      return l;
+    } catch (_) { return null; }
+  }
+  // Previews: one request for every font, limited to the letters on the buttons.
+  (function previewFaces() {
+    const fams = Object.values(FACES).filter((f) => f.g).map((f) => 'family=' + f.g.split(':')[0]);
+    const letters = encodeURIComponent('Aa SourceLiterataCharisLoraEBGaramondAtkinsonInter');
+    addSheet('https://fonts.googleapis.com/css2?' + fams.join('&') + '&text=' + letters + '&display=swap');
+  })();
+  function applyFace() {
+    const f = FACES[settings.face] || FACES.iowan;
+    if (f.g && !loadedFaces.has(f.g)) {
+      loadedFaces.add(f.g);
+      const l = addSheet('https://fonts.googleapis.com/css2?family=' + f.g + '&display=swap');
+      // When the real font arrives the lines rewrap, so hold the reader's place.
+      const settle = () => { if (book && !scrolling) { const keep = lastAnchor; invalidate(); reflowTo(keep); } };
+      if (l) l.addEventListener('load', () => {
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle); else settle();
+      });
+    }
+    const keep = lastAnchor;
+    app.style.setProperty('--read-font', f.stack);
+    if (book) { invalidate(); requestAnimationFrame(() => reflowTo(keep)); }
+  }
+
+  const THEMES = [
+    ['auto', 'Device'], ['night', 'Brass'], ['saffron', 'Saffron'], ['amber', 'Amber'],
+    ['oled', 'Black'], ['midnight', 'Midnight'], ['forest', 'Forest'], ['slate', 'Slate'],
+    ['rose', 'Rose'], ['paper', 'Paper'], ['parchment', 'Parchment'], ['sepia', 'Sepia'], ['sky', 'Sky']
+  ];
+  const swatchBox = $('swatches');
+  for (const [id, name] of THEMES) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'swatch'; b.dataset.pick = id;
+    const aa = document.createElement('span'); aa.className = 'aa'; aa.textContent = 'Aa';
+    const ac = document.createElement('span'); ac.className = 'ac';
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = name;
+    b.append(aa, ac, nm);
+    b.addEventListener('click', () => { settings.theme = id; saveSettings(); applyTheme(); });
+    swatchBox.appendChild(b);
+  }
+  function markSwatches() {
+    for (const b of swatchBox.children) {
+      const id = b.dataset.pick;
+      b.setAttribute('data-theme', id === 'auto' ? pageTheme() : id);
+      b.setAttribute('aria-pressed', settings.theme === id ? 'true' : 'false');
+    }
+    for (const b of faceGrid.children) b.setAttribute('aria-pressed', b.dataset.face === settings.face ? 'true' : 'false');
+  }
+  for (const [id, f] of Object.entries(FACES)) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'face-btn'; b.dataset.face = id;
+    const aa = document.createElement('span'); aa.className = 'fa'; aa.textContent = 'Aa ' + f.label.split(' ')[0];
+    aa.style.fontFamily = f.stack;
+    const nm = document.createElement('span'); nm.className = 'fn'; nm.textContent = f.note;
+    b.append(aa, nm);
+    b.addEventListener('click', () => { settings.face = id; saveSettings(); applyFace(); markSwatches(); });
+    faceGrid.appendChild(b);
+  }
+  if (!THEMES.some(([id]) => id === settings.theme)) settings.theme = 'oled';
+  // Pitch black became the default (Nov 2026): move devices still on the old defaults.
+  if (!settings.themeV) { if (settings.theme === 'auto' || settings.theme === 'night') settings.theme = 'oled'; settings.themeV = 2; saveSettings(); }
+  // Older saved choices: "serif" was Iowan, "sans" the system sans.
+  if (settings.face === 'serif') settings.face = 'iowan';
+  if (settings.face === 'sans') settings.face = 'system';
+  if (!FACES[settings.face]) settings.face = 'iowan';
+
+  /* =====================================================================
+     Reading engine
+     ===================================================================== */
+  const MIN_PPS = 3, MAX_PPS = 200, MAX_DT = 0.1, NUDGE = 3;
+
+  let book = null;        // { id, title, author, chapters:[{title}] }
+  let blocks = [];        // block elements, for position anchoring
+  let sections = [];      // chapter wrappers
+  let scrolling = false, rafId = null, lastT = 0, pos = 0, applied = 0;
+  let wakeLock = null, lastStatusT = 0, flashUntil = 0, flashMsg = '';
+  let held = false, coast = false, lastUserScroll = 0, wantWake = false;
+  const MIN_WPM = 60, MAX_WPM = 900;
+  let opening = false;    // suppresses position writes while a book is loading
+
+  /* Exponential so the slow end — where reading actually happens — gets
+     most of the slider's travel. The old linear-ish curve spent three
+     quarters of the range on speeds nobody can read. */
+  function pxPerSec() {
+    const t = (+speed.value - 1) / 99;
+    // The slider sets words per minute, and pixels are worked out from how
+    // dense the text is right now. Changing the text size therefore keeps
+    // the reading pace instead of quietly slowing or speeding it.
+    const wpp = book ? m().wordsPerPx : 0;
+    if (wpp > 0 && isFinite(wpp)) {
+      const wpm = MIN_WPM * Math.pow(MAX_WPM / MIN_WPM, t);
+      return Math.max(1, Math.min(600, wpm / 60 / wpp));
+    }
+    return MIN_PPS * Math.pow(MAX_PPS / MIN_PPS, t);
+  }
+
+  let metrics = null;
+  function m() {
+    if (metrics) return metrics;
+    const cs = getComputedStyle(reader);
+    const padT = parseFloat(cs.paddingTop) || 0;
+    const padB = parseFloat(cs.paddingBottom) || 0;
+    const lineH = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.75;
+    const textH = Math.max(1, reader.scrollHeight - padT - padB);
+    const words = book && book.words ? book.words : (content.textContent.match(/\S+/g) || []).length;
+    metrics = { padT, lineH, textH, words, wordsPerPx: words / textH };
+    return metrics;
+  }
+  const invalidate = () => { metrics = null; };
+  const maxScroll = () => Math.max(0, reader.scrollHeight - reader.clientHeight);
+
+  /* Finish when the last line reaches mid-screen rather than when the tail
+     padding has scrolled past, so a run does not end on blank space. */
+  function endScroll() {
+    const c = m();
+    return Math.max(0, Math.min(maxScroll(), c.padT + c.textH - reader.clientHeight * 0.5));
+  }
+
+  /* ---- position anchoring ----
+     Positions are stored as a block index plus a fraction of that block,
+     not a pixel offset. Pixels stop meaning anything the moment the text
+     size, the window, or the device orientation changes — this survives
+     all three, and is what makes resume land on the right sentence. */
+  /* Many EPUBs wrap a whole chapter in one div. Anchoring to that wrapper
+     means "43% through the chapter"; stepping inside it means a paragraph. */
+  const WRAP = new Set(['DIV', 'SECTION', 'ARTICLE', 'MAIN', 'HEADER', 'FOOTER', 'ASIDE', 'NAV']);
+  const BLOCKISH = new Set(['P', 'DIV', 'SECTION', 'ARTICLE', 'MAIN', 'HEADER', 'FOOTER', 'ASIDE', 'NAV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+    'UL', 'OL', 'DL', 'BLOCKQUOTE', 'TABLE', 'PRE', 'FIGURE', 'HR']);
+  function collectBlocks(el, out) {
+    for (const child of el.children) {
+      if (WRAP.has(child.tagName)) {
+        let bare = false, inner = false;
+        for (const n of child.childNodes) {
+          if (n.nodeType === 3 && n.nodeValue.trim()) { bare = true; break; }
+          if (n.nodeType === 1 && BLOCKISH.has(n.tagName)) inner = true;
+        }
+        if (!bare && inner) { collectBlocks(child, out); continue; }
+      }
+      out.push(child);
+    }
+  }
+  function blockTop(el) { return el.offsetTop; }
+  function anchorAt(scrollTop) {
+    if (!blocks.length) return { b: 0, f: 0 };
+    let lo = 0, hi = blocks.length - 1, idx = 0;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (blockTop(blocks[mid]) <= scrollTop) { idx = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    const el = blocks[idx];
+    const h = el.offsetHeight || 1;
+    return { b: idx, f: Math.max(0, Math.min(1, (scrollTop - blockTop(el)) / h)) };
+  }
+  function anchorToScroll(a) {
+    if (!a || !blocks.length) return 0;
+    const el = blocks[Math.max(0, Math.min(blocks.length - 1, a.b | 0))];
+    return blockTop(el) + (a.f || 0) * (el.offsetHeight || 0);
+  }
+
+  /* The reader's place is tracked continuously rather than captured when a
+     reflow is already under way. Resize events arrive *after* the browser
+     has relaid out, so measuring then reads the new layout and locks in
+     whatever paragraph happens to sit at the old pixel offset. The layout
+     key marks when scrollTop stops meaning what it meant, and readings
+     taken after that point are ignored until the position is restored. */
+  let lastAnchor = { b: 0, f: 0 };
+  let anchorLayout = '';
+  const layoutKey = () => reader.clientWidth + 'x' + reader.clientHeight + '@' + font.value;
+  const syncLayout = () => { anchorLayout = layoutKey(); };
+  function noteAnchor() {
+    if (opening || layoutKey() !== anchorLayout) return;
+    lastAnchor = anchorAt(reader.scrollTop);
+  }
+  function reflowTo(a) {
+    invalidate();
+    syncLayout();
+    seekTo(anchorToScroll(a));
+  }
+
+  /* ---- status ---- */
+  function fmt(sec) {
+    if (!isFinite(sec) || sec <= 0) return '0:00';
+    const s = Math.round(sec), h = Math.floor(s / 3600);
+    const mm = Math.floor((s % 3600) / 60), ss = s % 60;
+    return h ? h + ':' + String(mm).padStart(2, '0') + ':' + String(ss).padStart(2, '0')
+             : mm + ':' + String(ss).padStart(2, '0');
+  }
+  function currentChapter() {
+    let idx = 0;
+    for (let i = 0; i < sections.length; i++) {
+      if (sections[i].offsetTop <= reader.scrollTop + 4) idx = i; else break;
+    }
+    return idx;
+  }
+  let flashTimer = null;
+  function flash(msg) {
+    flashMsg = msg;
+    flashUntil = performance.now() + 1600;
+    render();
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(render, 1650); // put the real status back
+  }
+
+  function renderFoot(p, end) {
+    const pct = (p * 100).toFixed(1).replace(/\.0$/, '');
+    footFill.style.width = (p * 100).toFixed(2) + '%';
+    if (!book) { footLeft.textContent = ''; footRight.textContent = ''; return; }
+    const n = book.chapters.length, i = currentChapter();
+    // Time left in this chapter as well as the book: the useful number at 1am.
+    const next = sections[i + 1] ? Math.min(end, (sections[i + 1].firstElementChild || sections[i + 1]).offsetTop) : end;
+    const pps = pxPerSec();
+    const chLeft = Math.max(0, next - reader.scrollTop) / pps;
+    footLeft.textContent = n > 1 ? 'Ch ' + (i + 1) + ' of ' + n + ' · ' + fmt(chLeft) + ' left' : '';
+    footRight.textContent = pct + '% · ' + fmt(Math.max(0, end - reader.scrollTop) / pps) + ' left';
+  }
+
+  function render() {
+    const end = endScroll();
+    const p = end > 0 ? Math.min(1, Math.max(0, reader.scrollTop / end)) : 0;
+    fill.style.width = (p * 100).toFixed(2) + '%';
+    renderFoot(p, end);
+
+    const pps = pxPerSec();
+    const wpm = Math.round(pps * m().wordsPerPx * 60);
+    speedVal.textContent = wpm > 0 && isFinite(wpm) ? wpm + ' wpm' : Math.round(pps) + ' px/s';
+    fontVal.textContent = font.value + 'px';
+
+    if (flashUntil > performance.now()) { statusEl.textContent = flashMsg; return; }
+    const left = Math.max(0, end - reader.scrollTop) / pps;
+    const ch = book && book.chapters[currentChapter()];
+    const name = ch ? ch.title : '';
+    statusEl.textContent = (name ? name + '  ·  ' : '') + Math.round(p * 100) + '%  ·  ' + fmt(left) + ' left'
+      + ((scrolling || speaking) && isFinite(sleepAt) ? '  ·  sleep ' + fmt(Math.max(0, sleepAt - performance.now()) / 1000) : '')
+      + (scrolling && hz ? '  ·  ' + hz + ' Hz' : '');
+  }
+
+  /* ---- scroll loop ---- */
+  function step(t) {
+    if (!scrolling) return;
+    if (!lastT) lastT = t;
+    // Measure the frame rate the browser actually gives us (shown in the status line).
+    if (lastT !== t) { const inst = 1000 / (t - lastT); hzAvg = hzAvg ? hzAvg * 0.95 + inst * 0.05 : inst; hz = Math.round(hzAvg / 10) * 10 || Math.round(hzAvg); }
+    const dt = Math.min(MAX_DT, (t - lastT) / 1000); // a backgrounded tab must not fast-forward
+    lastT = t;
+
+    if (coast) {
+      // A finger or wheel has the page: stand aside until it lets go and
+      // any momentum has died, then carry on from wherever it left off.
+      setFrac(0);
+      if (held || t - lastUserScroll < 140) { rafId = requestAnimationFrame(step); return; }
+      coast = false; pos = applied = reader.scrollTop; noteAnchor();
+    }
+    if (Math.abs(reader.scrollTop - applied) > 1.5) pos = reader.scrollTop; // finger scroll wins
+    // Ease in on Play, ease out on Pause and on the sleep timer.
+    if (ramp !== rampTarget) {
+      ramp = rampTarget > ramp ? Math.min(rampTarget, ramp + dt / RAMP_UP) : Math.max(rampTarget, ramp - dt / rampDown);
+      if (ramp <= 0 && rampTarget <= 0) { stop(); if (sleepNote) { flash(sleepNote); sleepNote = ''; } return; }
+    }
+    pos += pxPerSec() * dt * ramp;
+    countReading(dt * ramp);
+    if (rampTarget > 0 && performance.now() > sleepAt) {
+      sleepNote = 'Sleep timer: paused after 15 minutes';
+      softStop(4);
+    }
+
+    const end = endScroll();
+    if (pos >= end) {
+      reader.scrollTop = end; applied = reader.scrollTop; setFrac(0);
+      render(); stop(); saveProgress();
+      if (caps.archive && book && book.driveId && !archivedIds().has(book.driveId)) {
+        finished = { driveId: book.driveId, title: book.title };
+        $('doneNote').textContent = 'You reached the end of “' + book.title + '”. Move it to the Archive folder on Drive? It stays readable from the Archive tab.';
+        openSheet(doneSheet);
+      }
+      return;
+    }
+    // Browsers round scrollTop to whole pixels (Safari does, on iPhone), so at
+    // reading speeds a pure scrollTop scroll moves in 1 px steps with frames of
+    // no movement in between: a visible stutter. The whole pixels go to
+    // scrollTop and the fraction left over goes to a GPU transform, so the
+    // text moves a little every frame.
+    reader.scrollTop = Math.floor(pos);
+    applied = reader.scrollTop;
+    setFrac(pos - applied);
+
+    if (t - lastStatusT > 250) { lastStatusT = t; noteAnchor(); render(); saveProgressSoon(); }
+    rafId = requestAnimationFrame(step);
+  }
+
+  /* Gentle start and stop, and the 15-minute sleep timer. Any real touch
+     on the page or the controls restarts the 15 minutes. */
+  const RAMP_UP = 0.6, SLEEP_MS = 15 * 60 * 1000;
+  let ramp = 1, rampTarget = 1, rampDown = 0.45, sleepAt = Infinity, sleepNote = '';
+  const wakeUp = () => { if (scrolling || speaking) sleepAt = performance.now() + SLEEP_MS; };
+  function softStop(seconds) {
+    if (!scrolling) return;
+    rampDown = seconds; rampTarget = 0;
+    playBtn.textContent = '▶ Play';
+  }
+
+  function play() {
+    if (speaking) stopSpeak();
+    if (!book) return;
+    if (reader.scrollTop >= endScroll() - 0.5) { flash('End of the book. Drag the bar at the top to go back.'); return; }
+    scrolling = true; lastT = 0; held = false; coast = false;
+    ramp = 0; rampTarget = 1; sleepAt = performance.now() + SLEEP_MS;
+    pos = applied = reader.scrollTop;
+    playBtn.textContent = '❚❚ Pause';
+    acquireWake();
+    armChrome();
+    rafId = requestAnimationFrame(step);
+  }
+  let fracShown = 0, hz = 0, hzAvg = 0;
+  function setFrac(f) {
+    f = f > 0 && f < 2 ? Math.round(f * 100) / 100 : 0;
+    if (f === fracShown) return;
+    fracShown = f;
+    content.style.transform = f ? 'translate3d(0,' + (-f) + 'px,0)' : '';
+  }
+
+  function stop() {
+    scrolling = false; ramp = 1; rampTarget = 1; sleepAt = Infinity;
+    flushStats();
+    setFrac(0);
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    playBtn.textContent = '▶ Play';
+    releaseWake();
+    clearTimeout(chromeTimer);
+    app.classList.remove('immersive');   // pausing always brings the controls back
+    saveProgress();
+    flushSync();                          // a pause is the moment the other phone should know
+  }
+  const toggle = () => {
+    if (speaking) { stopSpeak(); return; }
+    if (!scrolling) { play(); return; }
+    if (rampTarget > 0) softStop(0.45);
+    else { rampTarget = 1; playBtn.textContent = '❚❚ Pause'; sleepAt = performance.now() + SLEEP_MS; }   // tapped again while easing out: carry on
+  };
+
+  function seekTo(px) {
+    reader.scrollTop = Math.max(0, Math.min(maxScroll(), px || 0));
+    pos = applied = reader.scrollTop;
+    noteAnchor();
+    render();
+    saveProgressSoon();
+  }
+  const nudge = (lines) => seekTo(reader.scrollTop + lines * m().lineH);
+
+  /* ---- immersive chrome ----
+     The controls only get out of the way while the text is actually
+     moving; pausing always brings them back, so there is never a tap
+     whose only effect is to reveal a toolbar. */
+  const CHROME_DELAY = 2600;
+  let chromeTimer = null;
+  function sheetOpen() {
+    return !!app.querySelector('.sheet:not(.hidden)');
+  }
+  function armChrome() {
+    clearTimeout(chromeTimer);
+    if (!scrolling) return;
+    chromeTimer = setTimeout(() => {
+      if (scrolling && !sheetOpen() && book) app.classList.add('immersive');
+    }, CHROME_DELAY);
+  }
+  function showChrome() {
+    wakeUp();
+    app.classList.remove('immersive');
+    armChrome();
+  }
+
+  /* ---- save a copy ----
+     Serialises the running page back out as a standalone file, so the
+     hosted version can hand you an offline one. Your books are not in
+     the file — they live in this browser's storage — so the copy starts
+     with an empty library. */
+  function saveCopy() {
+    try {
+      const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'autoscroll-reader.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      showNotice('Saved. Open that file in any browser to read offline — it starts with an empty library, since your books live in this browser.');
+    } catch (_) {
+      showNotice('This browser would not let the page save a copy. Use your browser\'s own Save Page As instead.');
+    }
+  }
+
+  /* ---- full screen ---- */
+  function toggleFullscreen() {
+    const el = document.documentElement;
+    const on = document.fullscreenElement || document.webkitFullscreenElement;
+    // iPhone browsers have no full-screen mode for pages at all; only a
+    // Home Screen web app hides the bars there.
+    const iOS = /iPhone|iPod/.test(navigator.userAgent) || (/Mac/.test(navigator.platform) && navigator.maxTouchPoints > 1 && !/iPad/.test(navigator.userAgent) && screen.width < 500);
+    const refused = () => flash(iOS ? 'iPhone blocks full screen · use Add to Home Screen' : 'Full screen is blocked in this browser');
+    try {
+      const fn = on ? (document.exitFullscreen || document.webkitExitFullscreen)
+                    : (el.requestFullscreen || el.webkitRequestFullscreen);
+      if (!fn || (!on && !(document.fullscreenEnabled || document.webkitFullscreenEnabled))) { refused(); return; }
+      const r = fn.call(on ? document : el);
+      if (r && r.catch) r.catch(refused);
+    } catch (_) { refused(); }
+  }
+
+  /* ---- installable to the home screen ----
+     Injected at runtime rather than declared up front: when this page is
+     published, the surrounding document head is not ours to author. */
+  let themeMeta = null;
+  (function install() {
+    try {
+      const add = (name, content) => {
+        const m = document.createElement('meta');
+        m.name = name; m.content = content;
+        document.head.appendChild(m);
+        return m;
+      };
+      add('mobile-web-app-capable', 'yes');
+      add('apple-mobile-web-app-capable', 'yes');
+      add('apple-mobile-web-app-title', 'Reader');
+      add('apple-mobile-web-app-status-bar-style', 'black-translucent');
+      themeMeta = add('theme-color', '#14110f');
+
+      const manifest = {
+        name: 'Autoscroll Reader', short_name: 'Reader', display: 'fullscreen',
+        background_color: '#14110f', theme_color: '#14110f', start_url: '.'
+      };
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
+      document.head.appendChild(link);
+    } catch (_) { /* best effort — the page works without it */ }
+  })();
+
+  /* ---- keeping the screen on while reading ---- */
+  async function acquireWake() {
+    try {
+      wantWake = true;
+      if ('wakeLock' in navigator && !wakeLock) {
+        const l = await navigator.wakeLock.request('screen');
+        // Paused (or locked twice) while the request was in flight: hand it back.
+        if (!wantWake || wakeLock) { l.release().catch(() => {}); return; }
+        wakeLock = l;
+        l.addEventListener('release', () => { if (wakeLock === l) wakeLock = null; });
+      }
+    } catch (_) { /* unsupported, denied, or insecure context */ }
+  }
+  function releaseWake() { wantWake = false; if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
+
+  /* Reading time is tallied per day under a key of this device's own in the
+     shared progress file, so devices never overwrite each other's minutes. */
+  const DEVICE = (() => {
+    try { let d = localStorage.getItem('autoscroll-reader/device'); if (!d) { d = Math.random().toString(36).slice(2, 10); localStorage.setItem('autoscroll-reader/device', d); } return d; }
+    catch (_) { return 'x' + Math.random().toString(36).slice(2, 8); }
+  })();
+  const STATKEY = 'stats:' + DEVICE;
+  let statPending = 0, statLastFlush = 0;
+  const dayKey = (d) => { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  function countReading(sec) {
+    if (!(sec > 0)) return;
+    statPending += sec;
+    const now = performance.now();
+    if (now - statLastFlush > 30000) flushStats();
+  }
+  function flushStats() {
+    statLastFlush = performance.now();
+    if (statPending < 1) return;
+    const rec = progMap[STATKEY] && progMap[STATKEY].days ? progMap[STATKEY] : { days: {} };
+    const k = dayKey();
+    rec.days[k] = Math.round((rec.days[k] || 0) + statPending);
+    rec.t = Date.now();
+    statPending = 0;
+    writeProg(STATKEY, rec);
+    queueSync(STATKEY, rec);
+  }
+  function allDays() {
+    const sum = {};
+    for (const key in progMap) {
+      if (!key.startsWith('stats:') || !progMap[key] || !progMap[key].days) continue;
+      const days = progMap[key].days;
+      for (const d in days) sum[d] = (sum[d] || 0) + days[d];
+    }
+    return sum;
+  }
+
+  /* =====================================================================
+     Read aloud: the phone's own voice reads paragraph by paragraph from
+     where you are, the page follows the voice, and the paragraph being
+     read is highlighted. Long paragraphs are fed a few sentences at a time,
+     because some browsers stall on very long utterances.
+     ===================================================================== */
+  let speaking = false, speakIdx = 0, speakTimer = null;
+  const synth = window.speechSynthesis;
+  function chunksOf(text) {
+    const parts = text.match(/[^.!?…]+[.!?…]+["'”’)]*\s*|[^.!?…]+$/g) || [text];
+    const out = []; let cur = '';
+    for (const p of parts) { if ((cur + p).length > 220 && cur) { out.push(cur); cur = p; } else cur += p; }
+    if (cur.trim()) out.push(cur);
+    return out;
+  }
+  function startSpeak() {
+    if (!book || !synth) { flash('This browser cannot read aloud'); return; }
+    if (scrolling) stop();
+    speaking = true;
+    $('ttsBtn').classList.add('on');
+    playBtn.textContent = '❚❚ Pause';
+    sleepAt = performance.now() + SLEEP_MS;
+    acquireWake();
+    speakIdx = anchorAt(reader.scrollTop + reader.clientHeight * 0.2).b;
+    try { synth.cancel(); } catch (_) {}
+    speakBlock();
+    clearInterval(speakTimer);
+    speakTimer = setInterval(() => {
+      countReading(1);
+      if (performance.now() > sleepAt) { stopSpeak(); flash('Sleep timer: stopped reading after 15 minutes'); }
+      render();
+    }, 1000);
+  }
+  function speakBlock() {
+    if (!speaking) return;
+    while (speakIdx < blocks.length && !blocks[speakIdx].textContent.trim()) speakIdx++;
+    if (speakIdx >= blocks.length) { stopSpeak(); return; }
+    const el = blocks[speakIdx];
+    for (const x of content.querySelectorAll('.speaking')) x.classList.remove('speaking');
+    el.classList.add('speaking');
+    const target = Math.max(0, el.offsetTop - reader.clientHeight * 0.22);
+    try { reader.scrollTo({ top: target, behavior: 'smooth' }); } catch (_) { reader.scrollTop = target; }
+    const chunks = chunksOf(el.textContent.replace(/\s+/g, ' ').trim());
+    let i = 0;
+    const next = () => {
+      if (!speaking) return;
+      if (i >= chunks.length) { speakIdx++; speakBlock(); return; }
+      const u = new SpeechSynthesisUtterance(chunks[i++]);
+      u.rate = 1;
+      const v = pickVoice(); if (v) u.voice = v;
+      u.onend = next;
+      u.onerror = (e) => { if (speaking && e.error !== 'interrupted' && e.error !== 'canceled') next(); };
+      try { synth.speak(u); } catch (_) { stopSpeak(); flash('This browser cannot read aloud'); }
+    };
+    next();
+  }
+  let chosenVoice = null;
+  function pickVoice() {
+    if (chosenVoice) return chosenVoice;
+    const vs = (synth.getVoices && synth.getVoices()) || [];
+    const lang = (document.documentElement.lang || 'en').slice(0, 2);
+    // Prefer the better-sounding voices when the phone has them.
+    chosenVoice = vs.find((v) => v.lang && v.lang.startsWith(lang) && /enhanced|premium|natural|neural/i.test(v.name))
+      || vs.find((v) => v.lang && v.lang.startsWith('en') && v.default)
+      || vs.find((v) => v.lang && v.lang.startsWith('en')) || null;
+    return chosenVoice;
+  }
+  function stopSpeak() {
+    if (!speaking) return;
+    speaking = false;
+    clearInterval(speakTimer);
+    try { synth.cancel(); } catch (_) {}
+    $('ttsBtn').classList.remove('on');
+    for (const x of content.querySelectorAll('.speaking')) x.classList.remove('speaking');
+    playBtn.textContent = '▶ Play';
+    releaseWake();
+    sleepAt = Infinity;
+    flushStats();
+    saveProgress(); flushSync();
+  }
+
+  /* =====================================================================
+     Opening books
+     ===================================================================== */
+  async function addEpubFile(file) {
+    return addEpubBuffer(await file.arrayBuffer(), file.name, file.size, null);
+  }
+  async function addEpubBuffer(buf, fileName, size, driveId) {
+    const parsed = await parseEpub(buf, fileName.replace(/\.epub$/i, ''));
+    const id = bookId(parsed.title, parsed.author, size);
+    const existing = await getBook(id);
+    const rec = {
+      id, kind: 'epub',
+      title: parsed.title, author: parsed.author, cover: parsed.cover,
+      words: parsed.words,
+      chapters: parsed.chapters.map((c) => ({ title: c.title })),
+      progress: progMap[id] || (existing && existing.progress) || null,     // re-adding keeps your place
+      added: (existing && existing.added) || Date.now(),
+      opened: Date.now(),
+      fileName, size,
+      driveId: driveId || (existing && existing.driveId) || null
+    };
+    await putText({ id, chapters: parsed.chapters });
+    await putBook(rec);
+    return rec;
+  }
+
+  async function addPastedText(title, text, drive) {
+    const words = (text.match(/\S+/g) || []).length;
+    const id = bookId(title, 'pasted', text.length);
+    const html = '<div class="plain"></div>';
+    const holder = document.createElement('div');
+    holder.innerHTML = html;
+    holder.firstChild.textContent = text;
+    const rec = {
+      id, kind: 'text', title, author: '', cover: null, words,
+      chapters: [{ title: title }], progress: progMap[id] || null, added: Date.now(), opened: Date.now(),
+      driveId: drive ? drive.id : null, fileName: drive ? drive.name : null, size: drive ? drive.size : null
+    };
+    await putText({ id, chapters: [{ title: title, html: holder.innerHTML }] });
+    await putBook(rec);
+    return rec;
+  }
+
+  async function openBook(rec) {
+    wantOpen = rec && rec.driveId ? rec.driveId : null;
+    showBusy('Opening ' + rec.title + '…');
+    stop();
+    // Read the saved place up front: everything below moves the reader
+    // around, and a stray write would overwrite the place we came to resume.
+    // Another phone may have read further since this one last looked.
+    if (gas) {
+      try { mergeRemote(await withTimeout(gasCall('getProgress'), 2500)); } catch (_) { /* offline: use what is here */ }
+      if (progMap[rec.id]) rec.progress = progMap[rec.id];
+    }
+    const saved = rec.progress;
+    const resume = saved && saved.v === 2 ? { b: saved.b, f: saved.f } : null;
+    opening = true;
+    try {
+      const stored = await getText(rec.id);
+      if (!stored) throw new Err('That book is in your library but its text is missing. Open the EPUB again to restore it.');
+
+      book = rec;
+      content.textContent = '';
+      reader.scrollTop = 0;
+      const frag = document.createDocumentFragment();
+      sections = [];
+      stored.chapters.forEach((ch, i) => {
+        const sec = document.createElement('section');
+        sec.className = 'chapter';
+        sec.innerHTML = ch.html;
+        const first = sec.firstElementChild;
+        if (first && /^H[1-6]$/.test(first.tagName)) first.classList.add('chapter-start');
+        frag.appendChild(sec);
+        sections.push(sec);
+      });
+      content.appendChild(frag);
+
+      // Flat list of top-level blocks, used for anchoring positions.
+      blocks = [];
+      for (const sec of sections) {
+        const n = blocks.length; collectBlocks(sec, blocks);
+        if (blocks.length === n) blocks.push(sec);
+      }
+      invalidate();
+
+      libraryView.classList.add('hidden');
+      readerView.classList.remove('hidden');
+      buildToc();
+
+      // Two frames: one for layout, one so offsetTop is settled before we seek.
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      opening = false;
+      reflowTo(resume || { b: 0, f: 0 });
+      // Places saved before blocks were counted paragraph by paragraph:
+      // use the stored fraction of the book, which is close rather than exact.
+      if (!resume && saved && saved.p > 0) seekTo(saved.p * endScroll());
+      render();
+      settleImages();
+      rec.opened = Date.now();
+      putBook(rec);
+    } catch (e) {
+      opening = false;
+      toLibrary();
+      showNotice(e.friendly ? e.message : 'Something went wrong opening that book.');
+    } finally {
+      hideBusy();
+    }
+  }
+
+  /* An image has no height until it decodes, so every paragraph after it
+     shifts down the moment it lands. Hold whatever is on screen *now* —
+     re-applying the position the book opened at would drag the reader back
+     to the start when a lazily-loaded image further in finally arrives. */
+  function settleImages() {
+    const imgs = Array.from(content.querySelectorAll('img')).filter((i) => !i.complete);
+    if (!imgs.length) return;
+    const again = () => { if (!scrolling && !opening) reflowTo(lastAnchor); };
+    for (const img of imgs) {
+      img.addEventListener('load', again, { once: true });
+      img.addEventListener('error', again, { once: true });
+    }
+  }
+
+  function toLibrary() {
+    stopSpeak();
+    setTimeout(() => { if (!book && gas) refreshDrive(); }, 50);
+    stop();
+    clearTimeout(chromeTimer);
+    app.classList.remove('immersive');
+    setEditing(false);
+    if (book) saveProgress();
+    book = null; blocks = []; sections = [];
+    content.textContent = '';
+    readerView.classList.add('hidden');
+    libraryView.classList.remove('hidden');
+    renderLibrary();
+  }
+
+  let progressTimer = null;
+  function saveProgress() {
+    if (!book || !blocks.length || opening) return;
+    noteAnchor();
+    const end = endScroll();
+    book.progress = {
+      v: 2, b: lastAnchor.b, f: lastAnchor.f,
+      p: end > 0 ? Math.min(1, reader.scrollTop / end) : 0,
+      t: Date.now(),
+      d: book.driveId || null
+    };
+    if (!writeProg(book.id, book.progress)) putBook(book).catch(() => {});
+    queueSync(book.id, book.progress);
+  }
+  function saveProgressSoon() {
+    if (progressTimer) return;
+    progressTimer = setTimeout(() => { progressTimer = null; saveProgress(); }, 1500);
+  }
+
+  /* =====================================================================
+     Library UI
+     ===================================================================== */
+  function coverEl(b) {
+    const wrap = document.createElement('div');
+    wrap.className = 'cover';
+    const art = b.cover || thumbFor(b.driveId);
+    if (b.driveId) wrap.dataset.coverFor = b.driveId;
+    if (art) {
+      const img = document.createElement('img');
+      img.src = art; img.alt = '';
+      wrap.appendChild(img);
+    } else {
+      // Most EPUBs in the wild have no usable cover art, so compose one
+      // from the title instead of showing an empty rectangle.
+      wrap.classList.add('gen');
+      wrap.dataset.initial = (String(b.title || '?').replace(/^\s*(the|a|an)\s+/i, '').trim()[0] || '?').toUpperCase();
+      const t = document.createElement('div');
+      t.className = 'gen-title'; t.textContent = b.title;
+      const a = document.createElement('div');
+      a.className = 'gen-author'; a.textContent = b.author || (b.kind === 'text' ? 'Pasted text' : '');
+      wrap.append(t, a);
+    }
+    return wrap;
+  }
+
+  const pctOf = (b) => Math.round(((b.progress && b.progress.p) || 0) * 100);
+
+  function makeCard(b) {
+    const card = document.createElement('button');
+    card.className = 'card';
+    card.type = 'button';
+    const pct = pctOf(b);
+
+    const title = document.createElement('div');
+    title.className = 'card-title'; title.textContent = b.title;
+    const author = document.createElement('div');
+    author.className = 'card-author'; author.textContent = b.author || (b.kind === 'text' ? 'Pasted text' : '');
+    const meter = document.createElement('div');
+    meter.className = 'card-meter';
+    const bar = document.createElement('i'); bar.style.width = pct + '%';
+    meter.appendChild(bar);
+    const label = document.createElement('div');
+    label.className = 'card-pct';
+    label.textContent = pct >= 99 ? 'Finished' : pct > 0 ? pct + '% read' : 'Not started';
+
+    card.append(coverEl(b), title, author, meter, label);
+    card.addEventListener('click', () => { if (!editing) openBook(b); });
+
+    card.appendChild(delButton(() => askRemove({ title: b.title, book: b })));
+    return card;
+  }
+
+  function delButton(onTap) {
+    const del = document.createElement('button');
+    del.className = 'card-del'; del.type = 'button';
+    del.setAttribute('aria-label', 'Remove');
+    del.textContent = '×';
+    del.addEventListener('click', (e) => { e.stopPropagation(); onTap(); });
+    return del;
+  }
+
+  /* One sheet for every removal, so "this phone only" and "Drive as well"
+     are never a guess. Drive deletions go to Drive's bin, not oblivion. */
+  let removing = null;
+  function askRemove(target) {
+    removing = target;
+    const onDrive = !!(target.drive || (gas && target.book && target.book.driveId));
+    $('removeTitle').textContent = '“' + target.title + '”';
+    const did = target.drive ? target.drive.id : (target.book && target.book.driveId);
+    const inArch = did && archivedIds().has(did);
+    $('archiveBtn').classList.toggle('hidden', !(caps.archive && did));
+    $('archiveBtn').textContent = inArch ? 'Restore to Library' : 'Move to Archive';
+    $('renameBtn').classList.toggle('hidden', !(caps.rename && did));
+    $('renameRow').classList.add('hidden');
+    $('renameInput').value = target.title || '';
+    $('removeLocal').classList.toggle('hidden', !!target.remoteOnly);
+    $('removeDrive').classList.toggle('hidden', !onDrive);
+    $('removeDrive').textContent = target.remoteOnly ? 'Delete from Drive' : 'Remove here and delete from Drive';
+    $('removeNote').textContent = onDrive
+      ? 'Deleting from Drive moves the file to Drive’s Bin, where it stays for 30 days. Other devices will lose it on their next refresh.'
+      : 'This book is only on this device.';
+    openSheet(removeSheet);
+  }
+  async function setArchived(driveId, toArchive, title) {
+    showBusy(toArchive ? 'Moving to Archive…' : 'Restoring…');
+    try {
+      const info = await gasCall(toArchive ? 'archiveBook' : 'restoreBook', driveId);
+      const d = driveFiles.find((x) => x.id === driveId);
+      if (d) d.where = info && info.where ? info.where : (toArchive ? 'archive' : 'library');
+      hideBusy();
+      showNotice((toArchive ? 'Moved to Archive: ' : 'Back in your Library: ') + (title || 'book') + '.');
+    } catch (e) { hideBusy(); showNotice('Could not ' + (toArchive ? 'archive' : 'restore') + ': ' + gasMessage(e)); }
+    renderLibrary();
+  }
+  async function doRemove(fromDrive) {
+    const t = removing; removing = null;
+    closeSheet(removeSheet);
+    if (!t) return;
+    const driveId = t.drive ? t.drive.id : (t.book && t.book.driveId);
+    if (fromDrive && driveId) {
+      showBusy('Deleting from Drive…');
+      try {
+        await gasCall('trashBook', driveId);
+        driveFiles = driveFiles.filter((d) => d.id !== driveId);
+      } catch (e) { hideBusy(); showNotice('Could not delete from Drive: ' + gasMessage(e)); return; }
+      hideBusy();
+    }
+    if (t.book) { await delBook(t.book.id); writeProg(t.book.id, null); }
+    renderLibrary();
+  }
+
+  let editing = false;
+  const SORTS = {
+    recent:   (x, y) => (y.lastRead || y.added || y.driveCreated || 0) - (x.lastRead || x.added || x.driveCreated || 0),
+    name:     (x, y) => byText(x.sortTitle, y.sortTitle),
+    author:   (x, y) => byText(x.author || '\uffff', y.author || '\uffff') || byText(x.sortTitle, y.sortTitle),
+    drive:    (x, y) => (y.driveCreated || 0) - (x.driveCreated || 0) || byText(x.sortTitle, y.sortTitle),
+    local:    (x, y) => (y.added || 0) - (x.added || 0) || (y.driveCreated || 0) - (x.driveCreated || 0),
+    progress: (x, y) => pctOf(y) - pctOf(x) || SORTS.recent(x, y),
+    unread:   (x, y) => (pctOf(x) > 0) - (pctOf(y) > 0) || byText(x.sortTitle, y.sortTitle),
+    size:     (x, y) => (y.size || 0) - (x.size || 0)
+  };
+  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+  // "The Ramayana" files under R, not T.
+  const bare = (t) => String(t || '').replace(/^\s*(the|a|an)\s+/i, '');
+  const byText = (a, b) => collator.compare(bare(a), bare(b));
+
+  const searchInput = $('libSearch');
+  const fold = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const searchQuery = () => fold(searchInput.value).trim().split(/\s+/).filter(Boolean);
+  // Every word typed must appear somewhere in the title, author or file name.
+  function matches(it, words) {
+    const hay = fold([it.sortTitle, it.title, it.author, it.fileName, it.remote && it.remote.name].join(' '));
+    return words.every((w) => hay.includes(w));
+  }
+  let searchTimer = null;
+  searchInput.addEventListener('input', () => {
+    $('searchClear').classList.toggle('hidden', !searchInput.value);
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderLibrary, 120);
+  });
+  $('searchClear').addEventListener('click', () => {
+    searchInput.value = ''; $('searchClear').classList.add('hidden'); renderLibrary(); searchInput.focus();
+  });
+
+  async function renderLibrary() {
+    let books = [];
+    try { books = await allBooks() || []; } catch (_) { books = []; }
+    for (const b of books) if (progMap[b.id]) b.progress = progMap[b.id];
+    // Places saved on any device, findable by Drive file too.
+    const byDrive = {};
+    for (const id in progMap) { const pr = progMap[id]; if (pr && pr.d && (!byDrive[pr.d] || pr.t > byDrive[pr.d].t)) byDrive[pr.d] = pr; }
+    // Drive books join the library: matched ones lend their Drive date to
+    // the local copy, the rest appear as download-on-tap cards.
+    const remote = [];
+    for (const d of driveFiles) {
+      const local = localFor(d, books);
+      if (local) { local.driveCreated = d.created || d.modified; if (!local.driveId) local.driveId = d.id; }
+      else {
+        const pr = byDrive[d.id] || null;
+        const meta = infoFor(d.id);
+        remote.push({ remote: d, sortTitle: meta.ti || cleanName(d.name), author: meta.au || '', size: d.size,
+          driveCreated: d.created || d.modified, progress: pr, lastRead: pr ? pr.t : 0 });
+      }
+    }
+    for (const b of books) {
+      b.sortTitle = b.title;
+      // Last read here, or on another device, whichever is later.
+      b.lastRead = Math.max(b.opened || 0, (b.progress && b.progress.t) || 0, (b.driveId && byDrive[b.driveId] && byDrive[b.driveId].t) || 0);
+    }
+    const arch = archivedIds();
+    const isArchived = (it) => it.remote ? arch.has(it.remote.id) : !!(it.driveId && arch.has(it.driveId));
+    const everything = books.concat(remote);
+    for (const it of everything) it.archived = isArchived(it);
+    const nArch = everything.filter((it) => it.archived).length;
+    $('tabArchive').textContent = 'Archive' + (nArch ? ' (' + nArch + ')' : '');
+    $('tabLibrary').textContent = 'Library (' + (everything.length - nArch) + ')';
+    const all = everything.filter((it) => (view === 'archive') === it.archived);
+    const q = searchQuery(), searching = q.length > 0;
+    const items = (searching ? all.filter((it) => matches(it, q)) : all).sort(SORTS[settings.sort] || SORTS.recent);
+
+    grid.textContent = '';
+    shelf.textContent = '';
+    drop.classList.toggle('hidden', items.length > 0);
+    drop.classList.toggle('hidden', items.length > 0 || searching || view === 'archive');
+    libCount.textContent = searching ? items.length + ' of ' + all.length
+      : items.length ? items.length + (items.length === 1 ? ' book' : ' books') : '';
+    // Drive-only books can be managed too (archive, rename, delete), so Edit shows for any book.
+    editBtn.classList.toggle('hidden', everything.length === 0);
+    if (!everything.length && editing) setEditing(false);
+
+    // Books you are part-way through, most recently read first.
+    // Includes books started on another device and not yet downloaded here.
+    const started = all.filter((b) => { const p = pctOf(b); return p > 0 && p < 99; }).sort(SORTS.recent);
+    continueWrap.classList.toggle('hidden', started.length === 0 || searching || view === 'archive');
+    for (const b of started.slice(0, 3)) shelf.appendChild(b.remote ? makeDriveCard(b.remote, b.progress) : makeCard(b));
+    for (const b of items) grid.appendChild(b.remote ? makeDriveCard(b.remote, b.progress) : makeCard(b));
+    if (!searching && !items.length && view === 'archive') {
+      const none = document.createElement('div'); none.className = 'search-empty';
+      none.textContent = 'Nothing archived yet. Finished books can be moved here from the book’s × menu in Edit, or when you reach the end.';
+      grid.appendChild(none);
+    }
+    for (const el of grid.querySelectorAll('.card')) if (view === 'archive') el.classList.add('archived');
+    if (searching && !items.length) {
+      const none = document.createElement('div'); none.className = 'search-empty';
+      none.textContent = 'Nothing matches “' + searchInput.value.trim() + '”.';
+      grid.appendChild(none);
+    }
+
+    grid.classList.toggle('editing', editing);
+    shelf.classList.toggle('editing', editing);
+    queueCovers();
+    refreshDlBtn();
+  }
+
+  function setEditing(on) {
+    editing = on;
+    editBtn.textContent = on ? 'Done' : 'Edit';
+    grid.classList.toggle('editing', on);
+    shelf.classList.toggle('editing', on);
+  }
+
+  let noticeTimer = null;
+  function showNotice(msg) {
+    libNotice.textContent = msg;
+    libNotice.classList.remove('hidden');
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => libNotice.classList.add('hidden'), 9000);
+  }
+  const showBusy = (msg) => { busy.textContent = msg; busy.classList.remove('hidden'); };
+  const hideBusy = () => busy.classList.add('hidden');
+
+  async function handleFiles(list) {
+    const files = Array.from(list).filter((f) => /\.epub$/i.test(f.name) || f.type === 'application/epub+zip');
+    if (!files.length) { showNotice('That is not an EPUB. This reader opens .epub files.'); return; }
+    let last = null, failed = 0;
+    for (const f of files) {
+      showBusy('Reading ' + cleanName(f.name) + '…');
+      try {
+        const buf = await f.arrayBuffer();
+        last = await addEpubBuffer(buf, f.name, f.size, null);
+        if (gas && !last.driveId) {
+          // Drive names get tidied ("Title - Author"), so match on the exact byte size, which
+          // two different EPUBs practically never share; the name is a second chance.
+          const already = driveFiles.find((d) => d.kind === 'epub' && d.size === f.size)
+            || driveFiles.find((d) => cleanName(d.name) === cleanName(f.name) && Math.abs(d.size - f.size) < 64);
+          if (already) { last.driveId = already.id; await putBook(last); }
+          else {
+            showBusy('Copying ' + cleanName(f.name) + ' to Google Drive…');
+            try {
+              const up = await gasCall('uploadBook', f.name, b64(new Uint8Array(buf)));
+              last.driveId = up.id; await putBook(last);
+              driveFiles.unshift(up);
+            } catch (e) { showNotice('Added here, but could not copy ' + cleanName(f.name) + ' to Drive: ' + gasMessage(e)); }
+          }
+        }
+      }
+      catch (e) {
+        failed++;
+        showNotice(e.friendly ? cleanName(f.name) + ': ' + e.message : 'Could not read ' + cleanName(f.name) + '. The file may be damaged.');
+      }
+    }
+    hideBusy();
+    await renderLibrary();
+    if (last && files.length === 1 && !failed) openBook(last);
+  }
+
+  /* =====================================================================
+     Google Drive. Present only when served by Apps Script; the standalone
+     file simply has no Drive section. Drive is the master copy; the phone
+     keeps its own parsed copy so reading never waits on the network.
+     ===================================================================== */
+  /* Two homes, one page. Served by Apps Script, it talks to Drive through
+     google.script.run. Installed from the offline site, it talks to the same
+     Code.gs through its web address with a private key, set once by opening
+     the setup link (…#key=…&api=…). With no key, or no internet, it is a
+     purely local reader. */
+  const IN_GAS = !!(window.google && google.script && google.script.run);
+  const API_STORE = 'autoscroll-reader/api';
+  const api = (() => {
+    let cfg = {};
+    try { cfg = JSON.parse(localStorage.getItem(API_STORE) || '{}') || {}; } catch (_) {}
+    try {
+      const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+      if (h.get('key') && h.get('api')) {
+        cfg = { key: h.get('key'), url: h.get('api') };
+        localStorage.setItem(API_STORE, JSON.stringify(cfg));
+        history.replaceState(null, '', location.pathname + location.search);   // keep the key out of the address bar
+      }
+    } catch (_) {}
+    return cfg.key && cfg.url ? cfg : null;
+  })();
+  const gas = IN_GAS ? google.script.run : (api ? { viaWeb: true } : null);
+  let driveFiles = (() => { try { return JSON.parse(localStorage.getItem('autoscroll-reader/drive-list') || '[]') || []; } catch (_) { return []; } })();
+  let caps = {};              // what this deployment of Code.gs can do
+  let view = 'library';       // or 'archive'
+  const archivedIds = () => new Set(driveFiles.filter((d) => d.where === 'archive').map((d) => d.id));
+  function gasCall(fn, ...args) {
+    if (IN_GAS) {
+      return new Promise((res, rej) => {
+        google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args);
+      });
+    }
+    if (!api) return Promise.reject(new Error('Not connected to Drive on this device.'));
+    if (!navigator.onLine) return Promise.reject(new Error('You are offline.'));
+    // text/plain keeps this a "simple" request, so the browser sends it without a preflight.
+    return fetch(api.url, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ key: api.key, fn, args })
+    }).then((r) => r.json()).then((j) => {
+      if (j && j.error) throw new Error(j.error);
+      return j ? j.result : null;
+    });
+  }
+  /* ---- reading place, shared through a small file in the Drive folder ----
+     Each save is stamped with the time; whichever device saved last wins.
+     Writes are batched (every 20 s while reading, at once on pause or when
+     the app goes to the background) so Drive is not hit on every frame. */
+  const pendingSync = {};
+  let syncTimer = null;
+  function queueSync(id, p) {
+    if (!gas || !p) return;
+    pendingSync[id] = p;
+    if (!syncTimer) syncTimer = setTimeout(flushSync, 20000);
+  }
+  function flushSync() {
+    clearTimeout(syncTimer); syncTimer = null;
+    if (!gas) return;
+    const batch = Object.assign({}, pendingSync);
+    for (const k in pendingSync) delete pendingSync[k];
+    if (!Object.keys(batch).length) return;
+    gasCall('saveProgress', batch).catch(() => {
+      for (const k in batch) if (!pendingSync[k]) pendingSync[k] = batch[k];   // retry next time
+    });
+  }
+  function mergeRemote(map) {
+    let changed = false;
+    for (const id in (map || {})) {
+      const r = map[id], l = progMap[id];
+      if (r && (r.t || 0) > ((l && l.t) || 0)) { progMap[id] = r; changed = true; }
+    }
+    if (changed) { try { localStorage.setItem(PROGRESS, JSON.stringify(progMap)); } catch (_) {} }
+    return changed;
+  }
+  const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+
+  const gasMessage = (e) => (e && e.message) || String(e || 'unknown error');
+  const sizeLabel = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+
+  /* ---- book covers for the list ----
+     Covers come out of each EPUB on the Drive side, are shrunk here to a
+     small thumbnail, kept on this device, and shared back to a covers file
+     in the Drive folder so other devices get them without asking again.
+     An empty string marks "this book has no cover", so it is not retried. */
+  const THUMBS = 'autoscroll-reader/thumbs';
+  const thumbs = (() => { try { return JSON.parse(localStorage.getItem(THUMBS) || '{}') || {}; } catch (_) { return {}; } })();
+  // Each entry is { c: thumbnail, ti: title, au: author }; older entries were just the thumbnail.
+  const infoFor = (driveId) => { const v = driveId && thumbs[driveId]; return !v ? {} : typeof v === 'string' ? { c: v } : v; };
+  const thumbFor = (driveId) => infoFor(driveId).c || '';
+  // Tidy a file name for display when the book's own title is not known yet.
+  const shown = (d) => infoFor(d.id).ti || cleanName(d.name);   // a Drive file as the reader shows it
+  function cleanName(name) {
+    let t = String(name || '').replace(/\.(epub|txt)$/i, '').replace(/_/g, ' ');
+    t = t.replace(/\(?\s*\b(z[- ]?lib(rary)?(\.org)?( sk)?|1lib( sk)?)\b\s*\)?/ig, ' ')
+      .replace(/[\s,;]+$/, '').replace(/\s{2,}/g, ' ').replace(/\.{3,}/g, '…').trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : String(name || '');
+  }
+  let thumbsDirty = false, thumbSaveTimer = null;
+  const pendingShare = {};
+  function storeThumbs() { try { localStorage.setItem(THUMBS, JSON.stringify(thumbs)); } catch (_) {} }
+  function mergeThumbs(map) {
+    let changed = false;
+    for (const id in (map || {})) if (!(id in thumbs)) { thumbs[id] = map[id]; changed = true; }
+    if (changed) storeThumbs();
+  }
+  function shrink(dataUrl) {
+    return new Promise((res) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const w = 96, h = Math.round(w * (img.naturalHeight / img.naturalWidth || 1.5));
+          const c = document.createElement('canvas'); c.width = w; c.height = Math.min(h, 192);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          res(c.toDataURL('image/jpeg', 0.72));
+        } catch (_) { res(''); }
+      };
+      img.onerror = () => res('');
+      img.src = dataUrl;
+    });
+  }
+  const coverQueue = [];
+  let infoRender = null;
+  let coverBusy = 0;
+  function queueCovers() {
+    if (!gas || !caps.covers || !navigator.onLine) return;
+    for (const d of driveFiles) {
+      if (d.kind !== 'epub' || coverQueue.includes(d.id)) continue;
+      const have = thumbs[d.id];
+      // Re-ask for books that only have a cover so far, once the script can also give titles.
+      if (have !== undefined && !(caps.info && (typeof have === 'string' || !('ti' in have)))) continue;
+      coverQueue.push(d.id);
+    }
+    pumpCovers();
+  }
+  function pumpCovers() {
+    while (coverBusy < 2 && coverQueue.length) {
+      const id = coverQueue.shift();
+      coverBusy++;
+      (caps.info ? gasCall('getBookInfo', id) : gasCall('getCover', id).then((c) => ({ cover: c })))
+        .then(async (info) => {
+          info = info || {};
+          const t = info.cover ? await shrink(info.cover) : (typeof thumbs[id] === 'string' ? thumbs[id] : (infoFor(id).c || ''));
+          if (info.name) { const d = driveFiles.find((x) => x.id === id); if (d) d.name = info.name; }
+          return { c: t || '', ti: info.title || '', au: info.author || '' };
+        })
+        .catch(() => null)   // a network hiccup is not "no cover": leave it to retry later
+        .then((entry) => {
+          if (!entry) return;
+          const t = entry.c;
+          thumbs[id] = caps.info ? entry : (t || '');
+          pendingShare[id] = thumbs[id];
+          if (caps.info) { clearTimeout(infoRender); infoRender = setTimeout(() => { if (!book) renderLibrary(); }, 600); }
+          thumbsDirty = true;
+          storeThumbs();
+          if (t) for (const im of document.querySelectorAll('[data-cover-for="' + id + '"]')) paintCover(im, t);
+          clearTimeout(thumbSaveTimer);
+          thumbSaveTimer = setTimeout(shareThumbs, 3000);
+        })
+        .finally(() => { coverBusy--; pumpCovers(); });
+    }
+  }
+  function paintCover(wrap, src) {
+    const badge = wrap.querySelector('.cloud');
+    wrap.classList.remove('gen');
+    wrap.textContent = '';
+    if (badge) wrap.appendChild(badge);
+    const img = document.createElement('img'); img.src = src; img.alt = '';
+    wrap.appendChild(img);
+  }
+  function shareThumbs() {
+    if (!thumbsDirty || !gas) return;
+    const batch = Object.assign({}, pendingShare);
+    for (const k in pendingShare) delete pendingShare[k];
+    thumbsDirty = false;
+    gasCall('saveThumbs', batch).catch(() => { Object.assign(pendingShare, batch); thumbsDirty = true; });
+  }
+
+  let syncing = false;
+  async function refreshDrive(manual) {
+    if (!gas || syncing) return;
+    syncing = true;
+    const driveState = $('driveState'), btn = $('driveRefresh');
+    $('driveLinks').classList.remove('hidden');
+    driveState.textContent = '';
+    btn.textContent = '↻ Syncing…'; btn.disabled = true;
+    const before = new Set(driveFiles.map((d) => d.id)), hadList = driveFiles.length > 0;
+    try {
+      const [files, prog, c] = await Promise.all([
+        gasCall('listBooks'),
+        gasCall('getProgress').catch(() => null),
+        gasCall('capabilities').catch(() => ({}))   // an older Code.gs has no such function
+      ]);
+      caps = c || {};
+      if (caps.covers) {
+        try { mergeThumbs(await gasCall('getThumbs')); } catch (_) { /* covers are a nicety */ }
+      }
+      $('viewTabs').classList.toggle('hidden', !caps.archive);
+      if (!caps.archive) view = 'library';
+      driveFiles = files || [];
+      try { localStorage.setItem('autoscroll-reader/drive-list', JSON.stringify(driveFiles)); } catch (_) {}
+      if (prog) mergeRemote(prog);
+      const added = hadList ? driveFiles.filter((d) => !before.has(d.id)).length : 0;
+      const gone = hadList ? [...before].filter((id) => !driveFiles.some((d) => d.id === id)).length : 0;
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      driveState.textContent = added ? added + ' new' : 'Synced ' + time;
+      if (manual === true) {
+        showNotice(added || gone
+          ? 'Drive synced: ' + [added && added + ' new', gone && gone + ' removed'].filter(Boolean).join(', ') + '.'
+          : 'Drive synced. No new books.');
+      }
+    }
+    catch (e) {
+      if (!navigator.onLine) driveState.textContent = 'Offline';
+      else { driveState.textContent = 'Drive unreachable'; if (manual === true) showNotice('Could not reach Drive: ' + gasMessage(e)); }
+    }
+    finally { syncing = false; btn.textContent = '↻ Sync Drive'; btn.disabled = false; }
+    renderLibrary();
+  }
+
+  function localFor(d, books) {
+    return books.find((b) => b.driveId === d.id || (b.fileName === d.name && b.size === d.size));
+  }
+
+  function makeDriveCard(d, pr) {
+    const card = document.createElement('button');
+    card.type = 'button'; card.className = 'card remote';
+    card.dataset.driveId = d.id;
+    const meta = infoFor(d.id);
+    const title = meta.ti || cleanName(d.name);
+    const cover = coverEl({ title, author: '', kind: d.kind === 'text' ? 'text' : 'epub', driveId: d.id });
+    const badge = document.createElement('span'); badge.className = 'cloud'; badge.textContent = '☁';
+    cover.appendChild(badge);
+    const t = document.createElement('div'); t.className = 'card-title'; t.textContent = title;
+    const pct = pr ? Math.round((pr.p || 0) * 100) : 0;
+    const a = document.createElement('div'); a.className = 'card-author';
+    a.textContent = meta.au || (pct > 0 ? 'Read on another device' : 'Not on this device yet');
+    const l = document.createElement('div'); l.className = 'card-pct';
+    l.textContent = pct > 0 ? pct + '% read' : '↓ ' + sizeLabel(d.size);
+    card.append(cover, t, a, l);
+    const meter = document.createElement('div'); meter.className = 'card-meter';
+    const bar = document.createElement('i'); bar.style.width = pct + '%'; meter.appendChild(bar);
+    if (!pct) meter.style.visibility = 'hidden';
+    card.appendChild(meter);
+    card.addEventListener('click', () => { if (!editing) fetchFromDrive(d); });
+    if (dlNow.has(d.id)) requestAnimationFrame(() => paintDl(d.id));
+    card.appendChild(delButton(() => askRemove({ title, remoteOnly: true, drive: d })));
+    return card;
+  }
+
+  /* Downloaded in slices: one Apps Script reply has a size ceiling, and a
+     large EPUB as base64 would hit it. */
+  const SLICE = 4 * 1024 * 1024;
+  /* Tapping a book that is not on this device: it downloads in the
+     background while the library stays usable, its row shows the progress,
+     and it opens by itself when ready (unless another book was tapped or
+     opened since, in which case it just waits in the library). */
+  const dlNow = new Map();      // drive id -> percent
+  let wantOpen = null;
+  function paintDl(id) {
+    const pct = dlNow.get(id);
+    for (const card of document.querySelectorAll('.card[data-drive-id="' + id + '"]')) {
+      card.classList.toggle('loading', pct !== undefined);
+      if (pct === undefined) continue;
+      const l = card.querySelector('.card-pct'); if (l) l.textContent = pct >= 100 ? 'Opening…' : '↓ ' + pct + '%';
+      const m = card.querySelector('.card-meter'); if (m) { m.style.visibility = 'visible'; m.firstChild.style.width = pct + '%'; }
+    }
+  }
+  async function fetchInBackground(d) {
+    wantOpen = d.id;
+    if (dlNow.has(d.id) || (bulkRun && !bulkRun.stop)) {
+      if (bulkRun) showNotice('Download all is running; this book will be ready as part of it.');
+      return;
+    }
+    dlNow.set(d.id, 0); paintDl(d.id);
+    try {
+      const rec = await fetchFromDrive(d, {
+        stopped: () => false,
+        progress: (msg) => {
+          const m = msg.match(/(\d+)%/);
+          dlNow.set(d.id, m ? +m[1] : (/^Saving/.test(msg) ? 100 : dlNow.get(d.id)));
+          paintDl(d.id);
+        }
+      });
+      dlNow.delete(d.id);
+      await renderLibrary();
+      if (wantOpen === d.id && !book && !sheetOpen()) openBook(rec);
+      else showNotice(shown(d) + ' is downloaded and ready.');
+    } catch (e) {
+      dlNow.delete(d.id);
+      renderLibrary();
+      showNotice(e && e.friendly ? shown(d) + ': ' + e.message : 'Could not download ' + shown(d) + ': ' + gasMessage(e));
+    }
+  }
+
+  async function fetchFromDrive(d, bulk) {
+    if (!bulk) return fetchInBackground(d);
+    const busyOn = (msg) => bulk ? bulk.progress(msg) : showBusy(msg);
+    const busyOff = () => { if (!bulk) hideBusy(); };
+    if (d.kind === 'text') {
+      try {
+        busyOn('Downloading ' + shown(d) + '…');
+        const text = await gasCall('getText', d.id);
+        const rec = await addPastedText(d.name.replace(/\.txt$/i, ''), text, d);
+        busyOff();
+        if (bulk) return rec;
+        await renderLibrary();
+        openBook(rec);
+      } catch (e) { busyOff(); if (bulk) throw e; showNotice('Could not download ' + shown(d) + ': ' + gasMessage(e)); }
+      return;
+    }
+    const out = new Uint8Array(d.size);
+    try {
+      for (let at = 0; at < d.size; at += SLICE) {
+        if (bulk && bulk.stopped()) throw new Error('stopped');
+        busyOn('Downloading ' + shown(d) + ' · ' + Math.round(at / d.size * 100) + '%');
+        const part = await gasCall('getBookPart', d.id, at, Math.min(SLICE, d.size - at));
+        const bin = atob(part);
+        for (let i = 0; i < bin.length; i++) out[at + i] = bin.charCodeAt(i);
+      }
+      busyOn((bulk ? 'Saving ' : 'Opening ') + shown(d) + '…');
+      const rec = await addEpubBuffer(out.buffer, d.name, d.size, d.id);
+      busyOff();
+      if (bulk) return rec;
+      await renderLibrary();
+      openBook(rec);
+    } catch (e) {
+      busyOff();
+      if (bulk) throw e;
+      showNotice(e && e.friendly ? shown(d) + ': ' + e.message : 'Could not download ' + shown(d) + ': ' + gasMessage(e));
+    }
+  }
+
+  /* ---- download every book for reading offline ----
+     One at a time, so a phone on mobile data is not swamped. Books already
+     here are skipped, archived ones too. Asks the browser to keep the
+     storage, so it is less likely to clear the books to free space. */
+  let bulkRun = null;
+  function notHere() {
+    return allBooks().then((books) => driveFiles.filter((d) => d.where !== 'archive' && !localFor(d, books || [])));
+  }
+  async function refreshDlBtn() {
+    const btn = $('dlAllBtn');
+    if (!gas || bulkRun) return;
+    const left = await notHere().catch(() => []);
+    btn.classList.toggle('hidden', !driveFiles.length);
+    btn.textContent = left.length ? '⬇ Download all (' + left.length + ')' : '✓ All on this device';
+    btn.disabled = !left.length;
+  }
+  async function downloadAll() {
+    if (bulkRun) return;
+    const todo = await notHere();
+    if (!todo.length) { showNotice('Every book is already on this device.'); return; }
+    try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (_) {}
+    const total = todo.reduce((a, d) => a + (d.size || 0), 0);
+    let doneBytes = 0, ok = 0;
+    const failed = [];
+    bulkRun = { stop: false };
+    const strip = $('dlStrip'), text = $('dlText'), fill = $('dlFill'), btn = $('dlAllBtn');
+    strip.classList.remove('hidden'); btn.disabled = true;
+    for (let i = 0; i < todo.length; i++) {
+      if (bulkRun.stop) break;
+      const d = todo[i];
+      const bulk = {
+        stopped: () => bulkRun.stop,
+        progress: (msg) => { text.textContent = (i + 1) + ' of ' + todo.length + ' · ' + msg.replace(/^Downloading /, ''); }
+      };
+      fill.style.width = (total ? doneBytes / total * 100 : i / todo.length * 100).toFixed(1) + '%';
+      try { await fetchFromDrive(d, bulk); ok++; }
+      catch (e) { if (!bulkRun.stop) failed.push(shown(d)); }
+      doneBytes += d.size || 0;
+      if ((i + 1) % 3 === 0) renderLibrary();   // ticks over to "Not started" as they land
+    }
+    const stopped = bulkRun.stop;
+    bulkRun = null;
+    fill.style.width = '100%';
+    strip.classList.add('hidden');
+    await renderLibrary();
+    showNotice((stopped ? 'Stopped. ' : '') + ok + (ok === 1 ? ' book' : ' books') + ' saved on this device for reading offline.'
+      + (failed.length ? ' Could not download: ' + failed.slice(0, 3).join(', ') + (failed.length > 3 ? ' and ' + (failed.length - 3) + ' more' : '') + '.' : ''));
+  }
+
+  /* ---- stats sheet ---- */
+  const mins = (sec) => Math.round((sec || 0) / 60);
+  const hm = (sec) => { const m = mins(sec); return m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + 'm'; };
+  function barsHtml(list) {
+    const max = Math.max(600, ...list.map((x) => x.v));   // at least 10 min tall, so a few seconds look like a few seconds
+    return '<div class="bars">' + list.map((x) =>
+      '<div class="bar"><small>' + (x.v >= 60 ? mins(x.v) : '') + '</small><i class="' + (x.v < 60 ? 'zero' : '') + '" style="height:' +
+      Math.max(2, Math.round(x.v / max * 92)) + 'px"></i><em>' + x.l + '</em></div>').join('') + '</div>';
+  }
+  function renderStats() {
+    flushStats();
+    const days = allDays();
+    const today = new Date(); today.setHours(12, 0, 0, 0);
+    const back = (n) => { const d = new Date(today); d.setDate(d.getDate() - n); return d; };
+    const wk = []; let wkSum = 0;
+    for (let i = 6; i >= 0; i--) { const d = back(i); const v = days[dayKey(d)] || 0; wkSum += v; wk.push({ v, l: d.toLocaleDateString([], { weekday: 'narrow' }) }); }
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const pre = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      let v = 0; for (const k in days) if (k.startsWith(pre)) v += days[k];
+      months.push({ v, l: d.toLocaleDateString([], { month: 'short' }) });
+    }
+    let streak = 0; for (let i = 0; i < 400; i++) { if ((days[dayKey(back(i))] || 0) >= 60) streak++; else if (i > 0) break; }
+    let monthSum = 0; for (let i = 0; i < 30; i++) monthSum += days[dayKey(back(i))] || 0;
+    let finished = 0; for (const k in progMap) { const pr = progMap[k]; if (!k.includes(':') && pr && pr.p >= 0.99) finished++; }
+    $('statsBody').innerHTML =
+      '<div class="stat-tiles">' +
+        '<div class="stat-tile"><b>' + hm(days[dayKey()] || 0) + '</b><span>Today</span></div>' +
+        '<div class="stat-tile"><b>' + hm(wkSum) + '</b><span>Last 7 days</span></div>' +
+        '<div class="stat-tile"><b>' + hm(monthSum) + '</b><span>Last 30 days</span></div>' +
+        '<div class="stat-tile"><b>' + streak + (streak === 1 ? ' day' : ' days') + '</b><span>Streak (1 min+ a day)</span></div>' +
+        '<div class="stat-tile"><b>' + finished + '</b><span>Books finished</span></div>' +
+        '<div class="stat-tile"><b>' + hm(Object.values(days).reduce((a, b) => a + b, 0)) + '</b><span>All time</span></div>' +
+      '</div>' +
+      '<div class="stat-h"><span>This week</span><span>minutes</span></div>' + barsHtml(wk) +
+      '<div class="stat-h"><span>Last 6 months</span><span>minutes</span></div>' + barsHtml(months) +
+      '<div class="stats-note">Time counts while the page is scrolling or being read aloud, on every device signed in to this reader. Stats started on 13 Nov 2026.</div>';
+  }
+
+  /* ---- bookmarks: kept per book under "bm:<book>" in the shared progress
+     file, stamped with the time, so the newest list wins on every device ---- */
+  const bmKey = () => 'bm:' + book.id;
+  const bmList = () => (book && progMap[bmKey()] && progMap[bmKey()].list) || [];
+  function saveBookmarks(list) {
+    const rec = { t: Date.now(), list };
+    writeProg(bmKey(), rec); queueSync(bmKey(), rec); flushSync();
+    renderBookmarks();
+  }
+  function renderBookmarks() {
+    const box = $('bmList'); box.textContent = '';
+    const list = bmList();
+    if (!list.length) {
+      const e = document.createElement('div'); e.className = 'bm-empty';
+      e.textContent = 'None yet. “Bookmark this spot” saves the paragraph at the top of the screen.';
+      box.appendChild(e); return;
+    }
+    list.slice().sort((a, b) => (a.b - b.b) || (a.f - b.f)).forEach((bm) => {
+      const row = document.createElement('div'); row.className = 'bm-item';
+      const go = document.createElement('button'); go.type = 'button'; go.className = 'toc-item';
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = Math.round((bm.p || 0) * 100) + '%';
+      const t = document.createElement('span'); t.className = 'snip'; t.textContent = bm.s || 'Bookmark';
+      go.append(n, t);
+      go.addEventListener('click', () => { closeSheet(tocSheet); reflowTo({ b: bm.b, f: bm.f }); });
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'bm-del'; del.textContent = '×';
+      del.setAttribute('aria-label', 'Delete bookmark');
+      del.addEventListener('click', () => saveBookmarks(bmList().filter((x) => x !== bm)));
+      row.append(go, del);
+      box.appendChild(row);
+    });
+  }
+  function addBookmark() {
+    if (!book) return;
+    noteAnchor();
+    const a = anchorAt(reader.scrollTop + 4);
+    const el = blocks[a.b];
+    const snip = el ? el.textContent.replace(/\s+/g, ' ').trim().slice(0, 140) : '';
+    const end = endScroll();
+    const list = bmList().filter((x) => x.b !== a.b);
+    list.push({ b: a.b, f: a.f, s: snip, p: end > 0 ? Math.min(1, reader.scrollTop / end) : 0, c: Date.now() });
+    saveBookmarks(list);
+    flash('Bookmarked');
+  }
+
+  /* ---- contents sheet ---- */
+  function buildToc() {
+    tocList.textContent = '';
+    if (!book) return;
+    book.chapters.forEach((ch, i) => {
+      const b = document.createElement('button');
+      b.className = 'toc-item'; b.type = 'button';
+      const n = document.createElement('span');
+      n.className = 'n'; n.textContent = i + 1;
+      const t = document.createElement('span');
+      t.textContent = ch.title;
+      b.append(n, t);
+      b.addEventListener('click', () => {
+        closeSheet(tocSheet);
+        // Land on the chapter's first line, not on the gap above it —
+        // stopping short leaves the previous chapter filling the screen.
+        const sec = sections[i];
+        if (sec) seekTo((sec.firstElementChild || sec).offsetTop);
+      });
+      tocList.appendChild(b);
+    });
+  }
+  function openSheet(sheet) {
+    clearTimeout(chromeTimer);
+    app.classList.remove('immersive');
+    if (sheet === tocSheet) {
+      renderBookmarks();
+      if (gas && book) gasCall('getProgress').then((m) => { if (mergeRemote(m)) renderBookmarks(); }).catch(() => {});
+      const cur = currentChapter();
+      Array.from(tocList.children).forEach((el, i) =>
+        el.setAttribute('aria-current', i === cur ? 'true' : 'false'));
+    }
+    sheet.classList.remove('hidden');
+  }
+  const closeSheet = (sheet) => { sheet.classList.add('hidden'); armChrome(); };
+
+  /* =====================================================================
+     Wiring
+     ===================================================================== */
+  $('openBtn').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => { handleFiles(fileInput.files); fileInput.value = ''; });
+
+  ['dragenter', 'dragover'].forEach((ev) => libraryView.addEventListener(ev, (e) => {
+    e.preventDefault(); libraryView.classList.add('dragging');
+  }));
+  ['dragleave', 'drop'].forEach((ev) => libraryView.addEventListener(ev, (e) => {
+    e.preventDefault(); libraryView.classList.remove('dragging');
+  }));
+  libraryView.addEventListener('drop', (e) => {
+    if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  });
+
+  $('pasteBtn').addEventListener('click', () => { openSheet(pasteSheet); $('pasteText').focus(); });
+  $('pasteClose').addEventListener('click', () => closeSheet(pasteSheet));
+  $('pasteSave').addEventListener('click', async () => {
+    const text = $('pasteText').value;
+    if (!text.trim()) { $('pasteText').focus(); return; }
+    const title = $('pasteTitle').value.trim() || text.trim().split('\n')[0].slice(0, 60) || 'Pasted text';
+    const rec = await addPastedText(title, text);
+    $('pasteText').value = ''; $('pasteTitle').value = '';
+    if (gas) {
+      gasCall('uploadText', title, text).then(async (up) => {
+        rec.driveId = up.id; rec.fileName = up.name; rec.size = up.size;
+        await putBook(rec);
+        driveFiles.unshift(up);
+      }).catch((e) => showNotice('Saved here, but could not copy “' + title + '” to Drive: ' + gasMessage(e)));
+    }
+    closeSheet(pasteSheet);
+    await renderLibrary();
+    openBook(rec);
+  });
+
+  playBtn.addEventListener('click', toggle);
+  $('libBtn').addEventListener('click', toLibrary);
+  $('backBtn').addEventListener('click', () => { nudge(-NUDGE); showChrome(); });
+  $('fwdBtn').addEventListener('click', () => { nudge(NUDGE); showChrome(); });
+  $('tocBtn').addEventListener('click', () => openSheet(tocSheet));
+  editBtn.addEventListener('click', () => setEditing(!editing));
+  fsBtn.addEventListener('click', toggleFullscreen);
+  $('tocClose').addEventListener('click', () => closeSheet(tocSheet));
+  $('themeBtn').addEventListener('click', () => openSheet(themeSheet));
+  $('themeBtn2').addEventListener('click', () => openSheet(themeSheet));
+  $('themeClose').addEventListener('click', () => closeSheet(themeSheet));
+  $('removeCancel').addEventListener('click', () => { removing = null; closeSheet(removeSheet); });
+  $('removeLocal').addEventListener('click', () => doRemove(false));
+  $('statsBtn').addEventListener('click', async () => {
+    renderStats(); openSheet(statsSheet);
+    if (gas) { try { mergeRemote(await gasCall('getProgress')); renderStats(); } catch (_) {} }
+  });
+  $('statsClose').addEventListener('click', () => closeSheet(statsSheet));
+  $('dlAllBtn').addEventListener('click', downloadAll);
+  $('dlStop').addEventListener('click', () => { if (bulkRun) { bulkRun.stop = true; $('dlText').textContent = 'Stopping after this book…'; } });
+  $('renameBtn').addEventListener('click', () => { $('renameRow').classList.remove('hidden'); $('renameBtn').classList.add('hidden'); $('renameInput').focus(); $('renameInput').select(); });
+  $('renameSave').addEventListener('click', async () => {
+    const t = removing; const name = $('renameInput').value.trim();
+    if (!t || !name) return;
+    const did = t.drive ? t.drive.id : (t.book && t.book.driveId);
+    removing = null; closeSheet(removeSheet);
+    showBusy('Renaming…');
+    try {
+      const info = await gasCall('renameBook', did, name);
+      const d = driveFiles.find((x) => x.id === did); if (d && info) d.name = info.name;
+      const cur = infoFor(did); thumbs[did] = Object.assign({}, cur, { ti: name }); storeThumbs();
+      pendingShare[did] = thumbs[did]; thumbsDirty = true; shareThumbs();
+      if (t.book) { t.book.title = name; await putBook(t.book); }
+      hideBusy(); showNotice('Renamed to “' + name + '”.');
+    } catch (e) { hideBusy(); showNotice('Could not rename: ' + gasMessage(e)); }
+    renderLibrary();
+  });
+  $('bmAdd').addEventListener('click', addBookmark);
+  $('archiveBtn').addEventListener('click', () => {
+    const t = removing; removing = null; closeSheet(removeSheet);
+    if (!t) return;
+    const did = t.drive ? t.drive.id : (t.book && t.book.driveId);
+    if (did) setArchived(did, !archivedIds().has(did), t.title);
+  });
+  // Finished a book: offer to file it away.
+  let finished = null;
+  $('doneKeep').addEventListener('click', () => { finished = null; closeSheet(doneSheet); });
+  $('doneArchive').addEventListener('click', () => {
+    const f = finished; finished = null; closeSheet(doneSheet);
+    if (f) { toLibrary(); setArchived(f.driveId, true, f.title); }
+  });
+  $('tabLibrary').addEventListener('click', () => { view = 'library'; markTabs(); renderLibrary(); });
+  $('tabArchive').addEventListener('click', () => { view = 'archive'; markTabs(); renderLibrary(); });
+  function markTabs() {
+    $('tabLibrary').setAttribute('aria-selected', view === 'library' ? 'true' : 'false');
+    $('tabArchive').setAttribute('aria-selected', view === 'archive' ? 'true' : 'false');
+  }
+  $('removeDrive').addEventListener('click', () => doRemove(true));
+  $('fsBtn2').addEventListener('click', () => { toggleFullscreen(); showChrome(); });
+  $('ttsBtn').addEventListener('click', () => { speaking ? stopSpeak() : startSpeak(); showChrome(); });
+  themeSheet.addEventListener('click', (e) => { if (e.target === themeSheet) closeSheet(themeSheet); });
+
+  speed.addEventListener('input', () => { settings.speed = +speed.value; saveSettings(); render(); showChrome(); });
+  font.addEventListener('input', () => {
+    const keep = lastAnchor;              // read before the reflow invalidates it
+    settings.font = +font.value;
+    app.style.setProperty('--fs', font.value + 'px');
+    saveSettings();
+    invalidate();
+    requestAnimationFrame(() => reflowTo(keep));
+    showChrome();
+  });
+
+  // Tap to pause, but not when the tap was a drag or a text selection.
+  let downX = 0, downY = 0, downTop = 0;
+  reader.addEventListener('pointerdown', (e) => {
+    downX = e.clientX; downY = e.clientY; downTop = reader.scrollTop;
+  });
+  reader.addEventListener('pointerup', (e) => {
+    const moved = Math.hypot(e.clientX - downX, e.clientY - downY) > 8
+      || Math.abs(reader.scrollTop - downTop) > 2;
+    const selecting = !(window.getSelection() || { isCollapsed: true }).isCollapsed;
+    if (!moved && !selecting && book) { toggle(); showChrome(); }
+  });
+
+  function seekFromEvent(e) {
+    const r = hit.getBoundingClientRect();
+    seekTo(((e.clientX - r.left) / r.width) * endScroll());
+  }
+  hit.addEventListener('pointerdown', (e) => { hit.setPointerCapture(e.pointerId); seekFromEvent(e); });
+  hit.addEventListener('pointermove', (e) => { if (hit.hasPointerCapture(e.pointerId)) seekFromEvent(e); });
+
+  // While the text is moving, a touch or wheel takes the page over; the
+  // loop waits (see step) rather than wrestling the finger for scrollTop.
+  const grab = () => { wakeUp(); if (scrolling) { held = true; coast = true; lastUserScroll = performance.now(); } };
+  const letGo = (e) => { held = !!(e.touches && e.touches.length); lastUserScroll = performance.now(); };
+  reader.addEventListener('touchstart', grab, { passive: true });
+  reader.addEventListener('touchend', letGo, { passive: true });
+  reader.addEventListener('touchcancel', letGo, { passive: true });
+  reader.addEventListener('wheel', () => {
+    if (scrolling) { coast = true; lastUserScroll = performance.now(); }
+  }, { passive: true });
+
+  reader.addEventListener('scroll', () => {
+    if (coast) lastUserScroll = performance.now();
+    if (!scrolling) { noteAnchor(); render(); saveProgressSoon(); }
+  }, { passive: true });
+
+  document.addEventListener('keydown', (e) => {
+    if (/^(INPUT|TEXTAREA)$/.test((e.target.tagName || ''))) {
+      if (e.key === 'Escape') closeSheet(pasteSheet);
+      return;
+    }
+    if (sheetOpen()) {
+      if (e.key === 'Escape') { closeSheet(tocSheet); closeSheet(pasteSheet); closeSheet(themeSheet); closeSheet(removeSheet); closeSheet(doneSheet); closeSheet(statsSheet); e.preventDefault(); }
+      return;
+    }
+    if (readerView.classList.contains('hidden')) return;
+    switch (e.key) {
+      case ' ': case 'k': e.preventDefault(); toggle(); break;
+      case 'ArrowUp': e.preventDefault(); nudge(-NUDGE); break;
+      case 'ArrowDown': e.preventDefault(); nudge(NUDGE); break;
+      case 'ArrowLeft': e.preventDefault(); speed.value = Math.max(1, +speed.value - 2); settings.speed = +speed.value; saveSettings(); render(); break;
+      case 'ArrowRight': e.preventDefault(); speed.value = Math.min(100, +speed.value + 2); settings.speed = +speed.value; saveSettings(); render(); break;
+      case 'Home': e.preventDefault(); seekTo(0); break;
+      case 'End': e.preventDefault(); seekTo(endScroll()); break;
+      case 'Escape': e.preventDefault(); toLibrary(); break;
+      case 't': e.preventDefault(); openSheet(tocSheet); break;
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (scrolling) { lastT = 0; acquireWake(); }   // the OS drops the lock when hidden
+      if (!book && gas) refreshDrive();               // pick up what other devices read meanwhile
+    } else { saveProgress(); flushSync(); }
+  });
+  window.addEventListener('pagehide', () => { saveProgress(); flushSync(); });
+
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    if (!book) return;
+    // lastAnchor was recorded before the reflow; measuring now would read
+    // the new layout and keep whatever paragraph slid under the old offset.
+    const keep = lastAnchor;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => reflowTo(keep), 150);
+  });
+
+  if (!IN_GAS && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+  if (!IN_GAS && !api) {
+    setTimeout(() => showNotice('This copy works offline. To sync with your Google Drive library, open your setup link once on this device.'), 400);
+  }
+  window.addEventListener('online', () => { if (!book && gas) refreshDrive(); });
+
+  /* ---- start ---- */
+  applyFace();
+  speed.value = settings.speed;
+  font.value = settings.font;
+  app.style.setProperty('--fs', settings.font + 'px');
+  applyTheme();
+  if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
+    fsBtn.classList.remove('hidden');
+  }
+  const sortSel = $('sortSel');
+  if (!SORTS[settings.sort]) settings.sort = 'recent';
+  sortSel.value = settings.sort;
+  sortSel.addEventListener('change', () => { settings.sort = sortSel.value; saveSettings(); renderLibrary(); });
+  setEditing(false);
+  renderLibrary();
+  render();
+  if (gas) {
+    $('driveRefresh').addEventListener('click', () => refreshDrive(true));
+    refreshDrive();
+  }
+})();
+</script>
+</body>
+</html>
