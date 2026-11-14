@@ -1525,6 +1525,20 @@
   }
 
   /* ---- full screen ---- */
+  // Quiet version for the double/triple tap: no warning where the browser
+  // has no full screen (iPhone) — the bar still hides, which is the point.
+  function setFullscreen(want) {
+    const el = document.documentElement;
+    const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (want === on) return;
+    try {
+      const fn = want ? (el.requestFullscreen || el.webkitRequestFullscreen)
+                      : (document.exitFullscreen || document.webkitExitFullscreen);
+      if (!fn || (want && !(document.fullscreenEnabled || document.webkitFullscreenEnabled))) return;
+      const r = fn.call(want ? el : document);
+      if (r && r.catch) r.catch(() => {});
+    } catch (_) {}
+  }
   function toggleFullscreen() {
     const el = document.documentElement;
     const on = document.fullscreenElement || document.webkitFullscreenElement;
@@ -2743,8 +2757,9 @@
 
   // Tap to pause, but not when the tap was a drag or a text selection.
   // Taps are counted within a short window, then acted on together:
-  // one tap plays or pauses, two hide (or show) the bottom bar, three
-  // always bring it back. A single tap waits a beat so it isn't
+  // one tap plays or pauses, two hide the bottom bar and go full screen
+  // (where the browser allows it), three bring the bar back and leave
+  // full screen. A single tap waits a beat so it isn't
   // mistaken for the start of a double or triple.
   const DBL_MS = 300;
   let downX = 0, downY = 0, downTop = 0, lastTap = 0, lastTapX = 0, lastTapY = 0, tapTimer = null, taps = 0;
@@ -2764,8 +2779,8 @@
     tapTimer = setTimeout(() => {
       const n = taps; tapTimer = null; taps = 0;
       if (n === 1) { toggle(); showChrome(); }
-      else if (n === 2) app.classList.toggle('nobar');
-      else { app.classList.remove('nobar'); showChrome(); }
+      else if (n === 2) { app.classList.add('nobar'); setFullscreen(true); }
+      else { app.classList.remove('nobar'); setFullscreen(false); showChrome(); }
     }, DBL_MS);
   });
 
