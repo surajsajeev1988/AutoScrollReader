@@ -395,7 +395,7 @@
     display: flex; flex-direction: column; gap: 9px;
     transition: transform 0.26s ease, opacity 0.26s ease;
   }
-  #app.immersive #bar {
+  #app.immersive #bar, #app.nobar #bar {
     transform: translateY(110%); opacity: 0; pointer-events: none;
   }
   .bar-inner { width: 100%; max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 9px; }
@@ -1829,7 +1829,7 @@
     setTimeout(() => { if (!book && gas) refreshDrive(); }, 50);
     stop();
     clearTimeout(chromeTimer);
-    app.classList.remove('immersive');
+    app.classList.remove('immersive', 'nobar');
     setEditing(false);
     if (book) saveProgress();
     book = null; blocks = []; sections = [];
@@ -2619,7 +2619,7 @@
   }
   function openSheet(sheet) {
     clearTimeout(chromeTimer);
-    app.classList.remove('immersive');
+    app.classList.remove('immersive', 'nobar');
     if (sheet === tocSheet) {
       renderBookmarks();
       if (gas && book) gasCall('getProgress').then((m) => { if (mergeRemote(m)) renderBookmarks(); }).catch(() => {});
@@ -2741,7 +2741,10 @@
   });
 
   // Tap to pause, but not when the tap was a drag or a text selection.
-  let downX = 0, downY = 0, downTop = 0;
+  // Double-tap hides the bottom bar for good (until the next double-tap),
+  // so a single tap waits a beat to make sure a second one isn't coming.
+  const DBL_MS = 300;
+  let downX = 0, downY = 0, downTop = 0, lastTap = 0, lastTapX = 0, lastTapY = 0, tapTimer = null;
   reader.addEventListener('pointerdown', (e) => {
     downX = e.clientX; downY = e.clientY; downTop = reader.scrollTop;
   });
@@ -2749,7 +2752,16 @@
     const moved = Math.hypot(e.clientX - downX, e.clientY - downY) > 8
       || Math.abs(reader.scrollTop - downTop) > 2;
     const selecting = !(window.getSelection() || { isCollapsed: true }).isCollapsed;
-    if (!moved && !selecting && book) { toggle(); showChrome(); }
+    if (moved || selecting || !book) return;
+    const now = performance.now();
+    if (tapTimer && now - lastTap < DBL_MS && Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 40) {
+      clearTimeout(tapTimer); tapTimer = null; lastTap = 0;
+      app.classList.toggle('nobar');
+      return;
+    }
+    lastTap = now; lastTapX = e.clientX; lastTapY = e.clientY;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { tapTimer = null; toggle(); showChrome(); }, DBL_MS);
   });
 
   function seekFromEvent(e) {
