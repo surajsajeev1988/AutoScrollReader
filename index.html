@@ -2741,10 +2741,12 @@
   });
 
   // Tap to pause, but not when the tap was a drag or a text selection.
-  // Double-tap hides the bottom bar for good (until the next double-tap),
-  // so a single tap waits a beat to make sure a second one isn't coming.
+  // Taps are counted within a short window, then acted on together:
+  // one tap plays or pauses, two hide (or show) the bottom bar, three
+  // always bring it back. A single tap waits a beat so it isn't
+  // mistaken for the start of a double or triple.
   const DBL_MS = 300;
-  let downX = 0, downY = 0, downTop = 0, lastTap = 0, lastTapX = 0, lastTapY = 0, tapTimer = null;
+  let downX = 0, downY = 0, downTop = 0, lastTap = 0, lastTapX = 0, lastTapY = 0, tapTimer = null, taps = 0;
   reader.addEventListener('pointerdown', (e) => {
     downX = e.clientX; downY = e.clientY; downTop = reader.scrollTop;
   });
@@ -2754,14 +2756,16 @@
     const selecting = !(window.getSelection() || { isCollapsed: true }).isCollapsed;
     if (moved || selecting || !book) return;
     const now = performance.now();
-    if (tapTimer && now - lastTap < DBL_MS && Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 40) {
-      clearTimeout(tapTimer); tapTimer = null; lastTap = 0;
-      app.classList.toggle('nobar');
-      return;
-    }
+    const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 60;
+    taps = (tapTimer && now - lastTap < DBL_MS && near) ? taps + 1 : 1;
     lastTap = now; lastTapX = e.clientX; lastTapY = e.clientY;
     clearTimeout(tapTimer);
-    tapTimer = setTimeout(() => { tapTimer = null; toggle(); showChrome(); }, DBL_MS);
+    tapTimer = setTimeout(() => {
+      const n = taps; tapTimer = null; taps = 0;
+      if (n === 1) { toggle(); showChrome(); }
+      else if (n === 2) app.classList.toggle('nobar');
+      else { app.classList.remove('nobar'); showChrome(); }
+    }, DBL_MS);
   });
 
   function seekFromEvent(e) {
