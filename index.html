@@ -8,8 +8,10 @@
      every button tiny. Lay those out at a normal phone width (400) and let
      the browser scale it up to fill the screen. */
   (function () {
-    var w = Math.min(screen.width, screen.height);
-    if (w > 440 && w < 760 && matchMedia('(pointer: coarse)').matches) {
+    // A phone is a touch screen at least 1.7 times taller than wide (tablets
+    // are squarer), however many pixels it claims to have.
+    var w = Math.min(screen.width, screen.height), h = Math.max(screen.width, screen.height);
+    if (w > 440 && h / w > 1.7 && matchMedia('(pointer: coarse)').matches) {
       document.querySelector('meta[name=viewport]').setAttribute('content', 'width=400, viewport-fit=cover');
     }
   })();
