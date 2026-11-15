@@ -100,13 +100,15 @@
   #app button.fs-icon { align-self: flex-end; width: 42px; height: 42px; padding: 0; font-size: 19px; line-height: 1; display: grid; place-items: center; }
 
   /* Bottom progress footer */
+  /* Progress text sits at the top, under the thin progress line, so the
+     text can use the whole bottom of the screen. */
   #foot {
-    position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none;
-    padding: 24px 16px calc(6px + env(safe-area-inset-bottom));
-    background: linear-gradient(to bottom, transparent, var(--bg) 42%);
+    flex: none; pointer-events: none; background: var(--bg);
+    padding: 5px 16px 3px;
   }
+  #foot .foot-track { display: none; }   /* the line above already shows progress */
   .foot-text {
-    display: flex; justify-content: space-between; gap: 12px; margin-bottom: 5px;
+    display: flex; justify-content: space-between; gap: 12px; margin-bottom: 0;
     font-family: var(--sans); font-size: 11.5px; color: var(--muted);
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
@@ -582,7 +584,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 5</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 6</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -591,14 +593,12 @@
       <div id="progressFill"></div>
       <div id="progressHit" title="Drag to move through the book"></div>
     </div>
-
-    <div id="reader" tabindex="0"><div id="content"></div></div>
-
-    <!-- Always-on progress footer; the control bar covers it when shown. -->
     <div id="foot" aria-hidden="true">
       <div class="foot-text"><span id="footLeft"></span><span id="footRight"></span></div>
       <div class="foot-track"><i id="footFill"></i></div>
     </div>
+
+    <div id="reader" tabindex="0"><div id="content"></div></div>
 
     <div id="bar">
       <div class="bar-inner">
