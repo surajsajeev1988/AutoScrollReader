@@ -385,7 +385,14 @@
   }
   #reader { font-family: var(--read-font, var(--serif)); }
   #content { max-width: var(--measure); margin: 0 auto; will-change: transform; }
-  #content p { margin: 0 0 1em; text-align: initial; text-wrap: pretty; }
+  /* Lines run the full width of the screen: justified, with long words
+     split by a hyphen where needed so the gaps between words stay small. */
+  #content p {
+    margin: 0 0 1em; text-align: justify;
+    -webkit-hyphens: auto; hyphens: auto;
+    -webkit-hyphenate-limit-before: 3; -webkit-hyphenate-limit-after: 3;
+    hyphenate-limit-chars: 6 3 3;
+  }
   #content h1, #content h2, #content h3, #content h4 {
     font-size: 1.12em; font-weight: 600; line-height: 1.35;
     margin: 1.9em 0 0.7em; text-wrap: balance;
@@ -614,7 +621,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 12</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 13</div>
   </section>
 
   <!-- ============ Reader ============ -->
