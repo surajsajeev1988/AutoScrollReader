@@ -443,6 +443,9 @@
   #app button.primary:hover { filter: brightness(1.06); background: var(--accent); }
 
   .slider-block { flex: 1; min-width: 0; }
+  .speed-row { display: flex; align-items: center; gap: 10px; }
+  .speed-row input { flex: 1; min-width: 0; }
+  #app button.btn.step { flex: none; width: 34px; height: 30px; padding: 0; font: 600 18px/1 var(--sans); display: grid; place-items: center; }
   .slider-label {
     display: flex; justify-content: space-between; gap: 8px;
     font-family: var(--sans); font-size: 11px; color: var(--muted);
@@ -590,7 +593,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 7</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 8</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -612,7 +615,7 @@
         <div class="row">
           <div class="slider-block">
             <div class="slider-label"><span>Speed</span><b id="speedVal"></b></div>
-            <input type="range" id="speed" min="1" max="100" value="45" aria-label="Reading speed">
+            <div class="speed-row"><button class="btn step" id="slowerBtn" aria-label="Slower">−</button><input type="range" id="speed" min="180" max="230" step="1" value="200" aria-label="Reading speed"><button class="btn step" id="fasterBtn" aria-label="Faster">+</button></div>
           </div>
           <div class="slider-block" style="display:none"><!-- size is set by pinching the text now -->
             <div class="slider-label"><span>Size</span><b id="fontVal"></b></div>
@@ -1097,6 +1100,13 @@
     { speed: 45, font: 20, theme: 'oled', face: 'iowan', sort: 'recent' },
     (() => { try { return JSON.parse(localStorage.getItem(SETTINGS) || '{}'); } catch (_) { return {}; } })()
   );
+  // Speed is now set in words per minute, 180-230. Older copies stored a
+  // 1-100 slider position; turn that into the same pace.
+  const WPM_MIN = 180, WPM_MAX = 230;
+  if (!(settings.wpm >= WPM_MIN && settings.wpm <= WPM_MAX)) {
+    const old = 60 * Math.pow(15, ((+settings.speed || 45) - 1) / 99);
+    settings.wpm = Math.round(Math.min(WPM_MAX, Math.max(WPM_MIN, old)));
+  }
   /* Reading positions get their own tiny record. Saving them used to
      rewrite the whole book entry, cover image included, every second or so. */
   const PROGRESS = 'autoscroll-reader/progress';
@@ -1237,13 +1247,14 @@
      most of the slider's travel. The old linear-ish curve spent three
      quarters of the range on speeds nobody can read. */
   function pxPerSec() {
-    const t = (+speed.value - 1) / 99;
+    const wpmSet = +speed.value;
+    const t = Math.log(wpmSet / MIN_WPM) / Math.log(MAX_WPM / MIN_WPM);
     // The slider sets words per minute, and pixels are worked out from how
     // dense the text is right now. Changing the text size therefore keeps
     // the reading pace instead of quietly slowing or speeding it.
     const wpp = book ? m().wordsPerPx : 0;
     if (wpp > 0 && isFinite(wpp)) {
-      const wpm = MIN_WPM * Math.pow(MAX_WPM / MIN_WPM, t);
+      const wpm = wpmSet;
       return Math.max(1, Math.min(600, wpm / 60 / wpp));
     }
     return MIN_PPS * Math.pow(MAX_PPS / MIN_PPS, t);
@@ -2765,7 +2776,13 @@
   $('ttsBtn').addEventListener('click', () => { speaking ? stopSpeak() : startSpeak(); showChrome(); });
   themeSheet.addEventListener('click', (e) => { if (e.target === themeSheet) closeSheet(themeSheet); });
 
-  speed.addEventListener('input', () => { settings.speed = +speed.value; saveSettings(); render(); showChrome(); });
+  speed.addEventListener('input', () => { settings.wpm = +speed.value; saveSettings(); render(); showChrome(); });
+  function nudgeSpeed(d) {
+    speed.value = Math.min(WPM_MAX, Math.max(WPM_MIN, +speed.value + d));
+    settings.wpm = +speed.value; saveSettings(); render(); showChrome();
+  }
+  $('slowerBtn').addEventListener('click', () => nudgeSpeed(-2));
+  $('fasterBtn').addEventListener('click', () => nudgeSpeed(2));
   font.addEventListener('input', () => {
     const keep = lastAnchor;              // read before the reflow invalidates it
     settings.font = +font.value;
@@ -2869,8 +2886,8 @@
       case ' ': case 'k': e.preventDefault(); toggle(); break;
       case 'ArrowUp': e.preventDefault(); nudge(-NUDGE); break;
       case 'ArrowDown': e.preventDefault(); nudge(NUDGE); break;
-      case 'ArrowLeft': e.preventDefault(); speed.value = Math.max(1, +speed.value - 2); settings.speed = +speed.value; saveSettings(); render(); break;
-      case 'ArrowRight': e.preventDefault(); speed.value = Math.min(100, +speed.value + 2); settings.speed = +speed.value; saveSettings(); render(); break;
+      case 'ArrowLeft': e.preventDefault(); nudgeSpeed(-2); break;
+      case 'ArrowRight': e.preventDefault(); nudgeSpeed(2); break;
       case 'Home': e.preventDefault(); seekTo(0); break;
       case 'End': e.preventDefault(); seekTo(endScroll()); break;
       case 'Escape': e.preventDefault(); toLibrary(); break;
@@ -2921,7 +2938,7 @@
 
   /* ---- start ---- */
   applyFace();
-  speed.value = settings.speed;
+  speed.value = settings.wpm;
   font.value = settings.font;
   app.style.setProperty('--fs', settings.font + 'px');
   applyTheme();
