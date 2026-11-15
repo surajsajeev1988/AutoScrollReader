@@ -19,7 +19,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Reader">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -621,7 +621,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 13</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 14</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -2973,6 +2973,11 @@
     };
     fitHomeBar();
     window.addEventListener('resize', fitHomeBar);
+    // iOS can shrink the window after launch without saying so: check again
+    // shortly after opening, and whenever the app's own height changes.
+    [300, 1000, 3000].forEach((ms) => setTimeout(fitHomeBar, ms));
+    window.addEventListener('pageshow', fitHomeBar);
+    if (window.ResizeObserver) new ResizeObserver(fitHomeBar).observe(app);
     document.addEventListener('focusout', () => setTimeout(remeasure, 160));
     document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(remeasure, 160); });
   }
