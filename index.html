@@ -582,7 +582,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 3</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 4</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -2886,6 +2886,21 @@
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => reflowTo(keep), 150);
   });
+
+  /* iPhone Home Screen app with the see-through status bar: iOS sometimes
+     makes the page shorter than the screen, leaving a dead band at the
+     bottom. Size the app to the real screen there. */
+  if (navigator.standalone) {
+    const fitScreen = () => {
+      const portrait = window.innerHeight >= window.innerWidth;
+      const h = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+      app.style.bottom = 'auto';
+      app.style.height = h + 'px';
+    };
+    fitScreen();
+    window.addEventListener('resize', fitScreen);
+    window.addEventListener('orientationchange', () => setTimeout(fitScreen, 300));
+  }
 
   if (!IN_GAS && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
