@@ -621,7 +621,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 14</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 15</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -2953,23 +2953,13 @@
      - iOS can end the app's window above the home bar and keep the strip
        below for itself. Padding for the home bar is then wasted space, so
        drop it while the window is short.
-     - After the keyboard has been open, the window can stay shrunk. Hiding
-       and re-showing the app makes iOS measure it again. */
+     (Forcing iOS to re-measure by hiding and re-showing the app was tried
+     and removed: it re-laid-out the whole book and froze the page.) */
   if (navigator.standalone) {
-    let tallest = window.innerHeight;
     const fitHomeBar = () => {
-      tallest = Math.max(tallest, window.innerHeight);
       const portrait = window.innerHeight >= window.innerWidth;
       const gap = Math.max(screen.width, screen.height) - app.offsetHeight;
       app.style.setProperty('--sab', portrait && gap > 30 ? '0px' : '');
-    };
-    const remeasure = () => {
-      if (tallest - window.innerHeight > 4) {
-        const top = reader.scrollTop;
-        app.style.display = 'none'; void document.body.offsetHeight; app.style.display = '';
-        reader.scrollTop = top;
-      }
-      fitHomeBar();
     };
     fitHomeBar();
     window.addEventListener('resize', fitHomeBar);
@@ -2978,8 +2968,6 @@
     [300, 1000, 3000].forEach((ms) => setTimeout(fitHomeBar, ms));
     window.addEventListener('pageshow', fitHomeBar);
     if (window.ResizeObserver) new ResizeObserver(fitHomeBar).observe(app);
-    document.addEventListener('focusout', () => setTimeout(remeasure, 160));
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(remeasure, 160); });
   }
 
   if (!IN_GAS && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
