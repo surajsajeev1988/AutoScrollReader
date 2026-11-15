@@ -3,7 +3,7 @@
    opens with no internet. When online, a fresh copy is fetched in the
    background and used next time. Books live in the page's own storage, not
    here, and talking to Google Drive always goes straight to the network. */
-const SHELL = 'asr-shell-v18';
+const SHELL = 'asr-shell-v19';
 const FONTS = 'asr-fonts-v1';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
