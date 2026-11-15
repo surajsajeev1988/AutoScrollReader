@@ -1,0 +1,394 @@
+/**
+ * Autoscroll Reader — Google Apps Script web app.
+ *
+ * Everything lives in one Google Drive folder ("Autoscroll Reader Library"):
+ *   - the EPUBs, and pasted text saved as .txt files;
+ *   - an "Archive" folder inside it for finished books;
+ *   - reader-progress.json, the shared reading place for each book, so a
+ *     book left on one phone opens at the same sentence on the other.
+ * Each device downloads a book once and reads its own copy, so reading
+ * works offline. Colours, speed and text size stay per device.
+ */
+
+const FOLDER_ID = '1PDgmGlytDOt4sfJ9ngcHDwUkOw9OFa2g';
+const PROGRESS_FILE = 'reader-progress.json';
+const ARCHIVE_NAME = 'Archive';
+const THUMBS_FILE = 'reader-covers.json';
+
+/** What this version of the script can do; the page shows features to match. */
+function capabilities() {
+  return { archive: true, rename: true, covers: true, info: true, api: true, version: 7 };
+}
+
+// The reader page itself is kept in the Drive folder as
+// "AutoScroll Reader app (do not delete).html", so it can be updated
+// without editing or redeploying this project. If several copies exist,
+// the newest one is used, so an update is simply a newer copy.
+const APP_FILE_NAME = 'AutoScroll Reader app (do not delete).html';
+
+function page_() {
+  try {
+    const found = folder_().getFilesByName(APP_FILE_NAME);
+    let newest = null;
+    while (found.hasNext()) {
+      const f = found.next();
+      if (!f.isTrashed() && (!newest || f.getDateCreated() > newest.getDateCreated())) newest = f;
+    }
+    if (newest) return HtmlService.createHtmlOutput(newest.getBlob().getDataAsString('UTF-8'));
+  } catch (e) { /* fall through to the message below */ }
+  return HtmlService.createHtmlOutput(
+    '<p style="font:16px sans-serif;padding:24px">The reader page is missing from the ' +
+    '"Autoscroll Reader Library" Drive folder (file: ' + APP_FILE_NAME + ').</p>');
+}
+
+function doGet() {
+  const out = page_()
+    .setTitle('Autoscroll Reader')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .addMetaTag('mobile-web-app-capable', 'yes')
+    .addMetaTag('apple-mobile-web-app-capable', 'yes');
+  // Dark, see-through status bar on an iPhone Home Screen icon. Google allows
+  // only some tags; if this one is refused, the page still loads without it.
+  try { out.addMetaTag('apple-mobile-web-app-status-bar-style', 'black-translucent'); } catch (e) {}
+  return out;
+}
+
+/* ---------------- web API for the offline copy of the reader ----------------
+   The offline copy (on GitHub Pages) cannot use google.script.run, so it
+   sends { key, fn, args } here instead. Only the functions listed below can
+   be called, and only with the private key. Needs its own deployment with
+   access "Anyone", because the phone calls it without a Google sign-in. */
+const API_KEY = '__KEY__';
+
+function api_() {
+  return {
+    capabilities: capabilities, listBooks: listBooks, getProgress: getProgress, saveProgress: saveProgress,
+    getBookPart: getBookPart, getText: getText, uploadBook: uploadBook, uploadText: uploadText,
+    trashBook: trashBook, archiveBook: archiveBook, restoreBook: restoreBook, renameBook: renameBook,
+    getCover: getCover, getBookInfo: getBookInfo, getThumbs: getThumbs, saveThumbs: saveThumbs
+  };
+}
+
+function doPost(e) {
+  let out;
+  try {
+    const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (!req.key || req.key !== API_KEY) throw new Error('Not allowed.');
+    const fn = api_()[req.fn];
+    if (!fn) throw new Error('Unknown action.');
+    out = { result: fn.apply(null, Array.isArray(req.args) ? req.args : []) };
+  } catch (err) {
+    out = { error: String((err && err.message) || err) };
+  }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function folder_() {
+  return DriveApp.getFolderById(FOLDER_ID);
+}
+
+function kindOf_(file) {
+  const name = file.getName();
+  if (name === PROGRESS_FILE || name === THUMBS_FILE) return null;
+  if (/\.epub$/i.test(name) || file.getMimeType() === 'application/epub+zip') return 'epub';
+  if (/\.txt$/i.test(name) || file.getMimeType() === 'text/plain') return 'text';
+  return null;
+}
+
+function info_(f, kind, where) {
+  return {
+    id: f.getId(), name: f.getName(), size: f.getSize(), kind: kind, where: where || 'library',
+    created: f.getDateCreated().getTime(), modified: f.getLastUpdated().getTime()
+  };
+}
+
+/** The Archive folder inside the library, made on first use. */
+function archive_(create) {
+  const found = folder_().getFoldersByName(ARCHIVE_NAME);
+  while (found.hasNext()) {
+    const f = found.next();
+    if (!f.isTrashed()) return f;
+  }
+  return create ? folder_().createFolder(ARCHIVE_NAME) : null;
+}
+
+function collect_(folder, where, out) {
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const f = files.next();
+    if (f.isTrashed()) continue;
+    const kind = kindOf_(f);
+    if (kind) out.push(info_(f, kind, where));
+  }
+}
+
+/** Every book in the library and its Archive (EPUBs and saved text), newest first. */
+function listBooks() {
+  const out = [];
+  collect_(folder_(), 'library', out);
+  const arch = archive_(false);
+  if (arch) collect_(arch, 'archive', out);
+  out.sort(function (a, b) { return b.created - a.created; });
+  return out;
+}
+
+/** Only files in the library folder or its Archive may be touched. */
+function inLibrary_(file) {
+  const arch = archive_(false);
+  const ok = [FOLDER_ID, arch ? arch.getId() : null];
+  const parents = file.getParents();
+  while (parents.hasNext()) {
+    if (ok.indexOf(parents.next().getId()) >= 0) return true;
+  }
+  return false;
+}
+
+/** Moves a book into the Archive folder. */
+function archiveBook(id) {
+  const f = libraryFile_(id);
+  f.moveTo(archive_(true));
+  return info_(f, kindOf_(f), 'archive');
+}
+
+/** Moves a book from the Archive back into the library. */
+function restoreBook(id) {
+  const f = libraryFile_(id);
+  f.moveTo(folder_());
+  return info_(f, kindOf_(f), 'library');
+}
+
+/** Renames a book's file. Names carry no ".epub"/".txt": the file type is known from Drive itself. */
+function renameBook(id, name) {
+  const f = libraryFile_(id);
+  f.setName(safeName_(name, f.getName()).replace(/\.(epub|txt)$/i, ''));
+  return info_(f, kindOf_(f), f.getParents().next().getId() === FOLDER_ID ? 'library' : 'archive');
+}
+
+function libraryFile_(id) {
+  const file = DriveApp.getFileById(id);
+  if (!inLibrary_(file)) throw new Error('That file is not in the reader\'s Drive folder.');
+  return file;
+}
+
+/**
+ * One slice of an EPUB as base64. The page asks for a large book in pieces,
+ * because a single reply from Apps Script has a size ceiling.
+ */
+function getBookPart(id, start, length) {
+  const bytes = libraryFile_(id).getBlob().getBytes();
+  return Utilities.base64Encode(bytes.slice(start, start + length));
+}
+
+/** A saved text, whole. */
+function getText(id) {
+  return libraryFile_(id).getBlob().getDataAsString('UTF-8');
+}
+
+function safeName_(name, fallback) {
+  return String(name || fallback).replace(/[\\/:*?"<>|]/g, '_').slice(0, 120);
+}
+
+/** Copies an EPUB opened on a device into the folder, so other devices see it. */
+function uploadBook(name, base64) {
+  const blob = Utilities.newBlob(Utilities.base64Decode(base64), 'application/epub+zip', safeName_(name, 'Book').replace(/\.epub$/i, ''));
+  return info_(folder_().createFile(blob), 'epub', 'library');
+}
+
+/** Saves pasted text into the folder as a .txt file. */
+function uploadText(title, text) {
+  const name = safeName_(title, 'Pasted text').replace(/\.txt$/i, '');
+  return info_(folder_().createFile(name, text, MimeType.PLAIN_TEXT), 'text', 'library');
+}
+
+/** Moves a book to Drive's Bin (recoverable there for 30 days). */
+function trashBook(id) {
+  libraryFile_(id).setTrashed(true);
+  return true;
+}
+
+/* ---------------- shared reading place ---------------- */
+
+function progressFile_() {
+  const found = folder_().getFilesByName(PROGRESS_FILE);
+  while (found.hasNext()) {
+    const f = found.next();
+    if (!f.isTrashed()) return f;
+  }
+  return folder_().createFile(PROGRESS_FILE, '{}', MimeType.PLAIN_TEXT);
+}
+
+function readProgress_(file) {
+  try { return JSON.parse(file.getBlob().getDataAsString('UTF-8') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+
+/** The whole map: { bookId: { b, f, p, t } }. Small, so sent in one go. */
+function getProgress() {
+  return readProgress_(progressFile_());
+}
+
+/**
+ * Merges places from one device. For each book the save with the later
+ * time stamp wins, so a slow phone cannot drag the other one backwards.
+ * The lock stops two phones saving at once from losing each other's books.
+ */
+function saveProgress(entries) {
+  const lock = LockService.getUserLock();
+  lock.waitLock(10000);
+  try {
+    const file = progressFile_();
+    const map = readProgress_(file);
+    Object.keys(entries || {}).forEach(function (id) {
+      const p = entries[id];
+      if (p && (!map[id] || (p.t || 0) >= (map[id].t || 0))) map[id] = p;
+    });
+    file.setContent(JSON.stringify(map));
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------------- book covers ---------------- */
+
+function attr_(tag, name) {
+  const m = tag.match(new RegExp('\\b' + name + '\\s*=\\s*"([^"]*)"')) ||
+            tag.match(new RegExp('\\b' + name + "\\s*=\\s*'([^']*)'"));
+  return m ? m[1] : null;
+}
+
+function resolve_(base, rel) {
+  const stack = base.split('/').slice(0, -1);
+  decodeURIComponent(rel.split('#')[0]).split('/').forEach(function (part) {
+    if (!part || part === '.') return;
+    if (part === '..') stack.pop(); else stack.push(part);
+  });
+  return stack.join('/');
+}
+
+/** Opens an EPUB once: its files by name, and its package (.opf) text. */
+function epub_(f) {
+  const parts = Utilities.unzip(f.getBlob().setContentType('application/zip'));
+  const byName = {};
+  parts.forEach(function (b) { byName[b.getName()] = b; });
+  const cx = byName['META-INF/container.xml'] && byName['META-INF/container.xml'].getDataAsString();
+  const rootTag = cx && cx.match(/<rootfile\b[^>]*>/);
+  const opfPath = rootTag && attr_(rootTag[0], 'full-path');
+  const opf = opfPath && byName[opfPath] ? byName[opfPath].getDataAsString() : '';
+  return { byName: byName, opfPath: opfPath, opf: opf };
+}
+
+/** The cover picture as a data URL, or null if the book has none. */
+function coverOf_(ep) {
+  if (!ep.opf) return null;
+  const opf = ep.opf;
+  const items = opf.match(/<(?:\w+:)?item\b[^>]*>/g) || [];
+  let href = null;
+  // EPUB 3: the item marked as the cover image.
+  items.forEach(function (t) { if (!href && /\bcover-image\b/.test(attr_(t, 'properties') || '')) href = attr_(t, 'href'); });
+  // EPUB 2: <meta name="cover" content="item-id">.
+  if (!href) {
+    const meta = (opf.match(/<(?:\w+:)?meta\b[^>]*>/g) || []).filter(function (t) { return attr_(t, 'name') === 'cover'; })[0];
+    const cid = meta && attr_(meta, 'content');
+    if (cid) items.forEach(function (t) { if (!href && attr_(t, 'id') === cid) href = attr_(t, 'href'); });
+  }
+  // Last resort: an image whose id or file name says "cover".
+  if (!href) items.forEach(function (t) {
+    if (!href && /^image\//.test(attr_(t, 'media-type') || '') && /cover/i.test((attr_(t, 'id') || '') + (attr_(t, 'href') || ''))) href = attr_(t, 'href');
+  });
+  if (!href) return null;
+  const img = ep.byName[resolve_(ep.opfPath, href)];
+  if (!img) return null;
+  const bytes = img.getBytes();
+  if (bytes.length > 4000000) return null;
+  const ext = (href.split('.').pop() || '').toLowerCase();
+  const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : ext === 'svg' ? null : 'image/jpeg';
+  if (!mime) return null;
+  return 'data:' + mime + ';base64,' + Utilities.base64Encode(bytes);
+}
+
+/** The cover alone (kept for older versions of the page). */
+function getCover(id) {
+  const f = libraryFile_(id);
+  if (kindOf_(f) !== 'epub') return null;
+  return coverOf_(epub_(f));
+}
+
+function thumbsFile_() {
+  const found = folder_().getFilesByName(THUMBS_FILE);
+  while (found.hasNext()) {
+    const f = found.next();
+    if (!f.isTrashed()) return f;
+  }
+  return folder_().createFile(THUMBS_FILE, '{}', 'application/json');
+}
+
+/** Small cover thumbnails made by any device: { driveFileId: dataUrl or '' }. */
+function getThumbs() {
+  try { return JSON.parse(thumbsFile_().getBlob().getDataAsString('UTF-8') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+
+function saveThumbs(entries) {
+  const lock = LockService.getUserLock();
+  lock.waitLock(10000);
+  try {
+    const map = getThumbs();
+    Object.keys(entries || {}).forEach(function (id) { if (entries[id] || !map[id]) map[id] = entries[id]; });
+    thumbsFile_().setContent(JSON.stringify(map));
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------------- tidy titles and authors ---------------- */
+
+function cleanTitle_(t) {
+  return String(t || '')
+    .replace(/\s*\((z-?lib(rary)?(\.org)?|1lib[^)]*)\)/ig, '')
+    .replace(/_/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/** "Clear, James" becomes "James Clear"; several authors are joined with "&". */
+function cleanAuthor_(list) {
+  return list.map(function (a) {
+    a = String(a || '').replace(/\s{2,}/g, ' ').trim();
+    const parts = a.split(',');
+    if (parts.length === 2 && parts[1].trim() && !/\b(jr|sr|ii|iii)\b/i.test(parts[1])) a = parts[1].trim() + ' ' + parts[0].trim();
+    return a;
+  }).filter(Boolean).slice(0, 2).join(' & ');
+}
+
+function unescape_(t) {
+  return String(t || '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, function (_, n) { return String.fromCharCode(+n); }).trim();
+}
+
+/**
+ * The book's cover, its own title and its author, read from inside the EPUB.
+ * The Drive file is also renamed to "Title - Author" so the folder
+ * reads cleanly too (only once: an already tidy name is left alone).
+ */
+function getBookInfo(id) {
+  const f = libraryFile_(id);
+  if (kindOf_(f) !== 'epub') return null;
+  let cover = null, title = '', author = '';
+  try {
+    const ep = epub_(f);   // opened once for cover, title and author
+    try { cover = coverOf_(ep); } catch (e) { cover = null; }
+    if (ep.opf) {
+      const t = ep.opf.match(/<dc:title\b[^>]*>([\s\S]*?)<\/dc:title>/i);
+      title = cleanTitle_(unescape_(t && t[1]));
+      const cs = ep.opf.match(/<dc:creator\b[^>]*>[\s\S]*?<\/dc:creator>/ig) || [];
+      author = cleanAuthor_(cs.map(function (c) { return unescape_(c.replace(/<dc:creator\b[^>]*>|<\/dc:creator>/ig, '')); }));
+    }
+  } catch (e) { /* a damaged or very large book just keeps its file name */ }
+  if (!title) title = cleanTitle_(f.getName().replace(/\.epub$/i, ''));   // the name may still end in .epub
+  let name = f.getName();
+  const tidy = safeName_(title + (author ? ' - ' + author : ''), name).replace(/\.epub$/i, '');
+  if (tidy !== name && title) { try { f.setName(tidy); name = tidy; } catch (e) {} }
+  return { cover: cover, title: title, author: author, name: name };
+}
