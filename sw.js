@@ -3,12 +3,12 @@
    opens with no internet. When online, a fresh copy is fetched in the
    background and used next time. Books live in the page's own storage, not
    here, and talking to Google Drive always goes straight to the network. */
-const SHELL = 'asr-shell-v9';
+const SHELL = 'asr-shell-v10';
 const FONTS = 'asr-fonts-v1';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -42,7 +42,8 @@ self.addEventListener('fetch', (e) => {
     e.respondWith((async () => {
       const c = await caches.open(SHELL);
       try {
-        const r = await withTimeout(fetch(req), 3500);
+        // no-store: skip the browser's own 10-minute cache, so updates show at once
+        const r = await withTimeout(fetch(req.url, { cache: 'no-store' }), 3500);
         if (r && r.ok) c.put('index.html', r.clone());
         return r;
       } catch (_) {
