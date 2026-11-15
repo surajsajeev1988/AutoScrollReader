@@ -413,14 +413,21 @@
   #bar {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
     background: var(--panel); border-top: 1px solid var(--line);
-    padding: 9px 14px calc(11px + env(safe-area-inset-bottom)) 14px;
-    display: flex; flex-direction: column; gap: 9px;
+    padding: 8px 12px calc(6px + env(safe-area-inset-bottom)) 12px;
+    display: flex; flex-direction: column; gap: 7px;
     transition: transform 0.26s ease, opacity 0.26s ease;
   }
   #app.immersive #bar, #app.nobar #bar {
     transform: translateY(110%); opacity: 0; pointer-events: none;
   }
-  .bar-inner { width: 100%; max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 9px; }
+  .bar-inner { width: 100%; max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 7px; }
+  /* Compact bar: no separate status line (the top row shows progress) and
+     no "Speed" label; the wpm sits at the end of the slider row. */
+  #status.quiet { display: none; }
+  .speed-val { flex: none; min-width: 34px; text-align: right; font: 600 13px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+  #app #bar button.fs-icon { width: 36px; height: 36px; font-size: 16px; align-self: center; }
+  #app #bar .row.controls button.btn { padding: 8px 10px; }
+  #app #bar .row.controls button.back-btn { font-size: 28px; padding: 2px 12px 6px; min-width: 50px; }
   #status {
     font-family: var(--sans); font-size: 12px; color: var(--muted);
     text-align: center; min-height: 15px; font-variant-numeric: tabular-nums;
@@ -593,7 +600,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 8</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 9</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -614,8 +621,7 @@
         <div id="status"></div>
         <div class="row">
           <div class="slider-block">
-            <div class="slider-label"><span>Speed</span><b id="speedVal"></b></div>
-            <div class="speed-row"><button class="btn step" id="slowerBtn" aria-label="Slower">−</button><input type="range" id="speed" min="180" max="230" step="1" value="200" aria-label="Reading speed"><button class="btn step" id="fasterBtn" aria-label="Faster">+</button></div>
+            <div class="speed-row"><button class="btn step" id="slowerBtn" aria-label="Slower">−</button><input type="range" id="speed" min="180" max="230" step="1" value="200" aria-label="Reading speed"><button class="btn step" id="fasterBtn" aria-label="Faster">+</button><b id="speedVal" class="speed-val"></b></div>
           </div>
           <div class="slider-block" style="display:none"><!-- size is set by pinching the text now -->
             <div class="slider-label"><span>Size</span><b id="fontVal"></b></div>
@@ -1377,7 +1383,8 @@
     const pps = pxPerSec();
     const chLeft = Math.max(0, next - reader.scrollTop) / pps;
     footLeft.textContent = n > 1 ? 'Ch ' + (i + 1) + ' of ' + n + ' · ' + fmt(chLeft) + ' left' : '';
-    footRight.textContent = pct + '% · ' + fmt(Math.max(0, end - reader.scrollTop) / pps) + ' left';
+    footRight.textContent = pct + '% · ' + fmt(Math.max(0, end - reader.scrollTop) / pps) + ' left'
+      + ((scrolling || speaking) && isFinite(sleepAt) ? ' · ☾ ' + fmt(Math.max(0, sleepAt - performance.now()) / 1000) : '');
   }
 
   function render() {
@@ -1388,10 +1395,11 @@
 
     const pps = pxPerSec();
     const wpm = Math.round(pps * m().wordsPerPx * 60);
-    speedVal.textContent = wpm > 0 && isFinite(wpm) ? wpm + ' wpm' : Math.round(pps) + ' px/s';
+    speedVal.textContent = wpm > 0 && isFinite(wpm) ? String(wpm) : Math.round(pps) + ' px/s';
     fontVal.textContent = font.value + 'px';
 
-    if (flashUntil > performance.now()) { statusEl.textContent = flashMsg; return; }
+    if (flashUntil > performance.now()) { statusEl.classList.remove('quiet'); statusEl.textContent = flashMsg; return; }
+    statusEl.classList.add('quiet');
     const left = Math.max(0, end - reader.scrollTop) / pps;
     const ch = book && book.chapters[currentChapter()];
     const name = ch ? ch.title : '';
