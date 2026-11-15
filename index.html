@@ -19,7 +19,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Reader">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -385,14 +385,7 @@
   }
   #reader { font-family: var(--read-font, var(--serif)); }
   #content { max-width: var(--measure); margin: 0 auto; will-change: transform; }
-  /* Lines run the full width of the screen: justified, with long words
-     split by a hyphen where needed so the gaps between words stay small. */
-  #content p {
-    margin: 0 0 1em; text-align: justify;
-    -webkit-hyphens: auto; hyphens: auto;
-    -webkit-hyphenate-limit-before: 3; -webkit-hyphenate-limit-after: 3;
-    hyphenate-limit-chars: 6 3 3;
-  }
+  #content p { margin: 0 0 1em; text-align: initial; }
   #content h1, #content h2, #content h3, #content h4 {
     font-size: 1.12em; font-weight: 600; line-height: 1.35;
     margin: 1.9em 0 0.7em; text-wrap: balance;
@@ -404,7 +397,8 @@
   #reader { overflow-x: hidden; overscroll-behavior-x: none; }
   #content { max-width: 100%; overflow-wrap: break-word; }
   #content * { max-width: 100%; }
-  #content :not(pre):not(pre *) { white-space: normal; }
+  #content :not(pre) { white-space: normal; }
+  #content pre * { white-space: inherit; }
   #content img { max-width: 100%; height: auto; display: block; margin: 1.2em auto; border-radius: 2px; }
   #content hr { border: none; border-top: 1px solid var(--line); margin: 2em 0; }
   #content ul, #content ol { margin: 0 0 1em; padding-left: 1.4em; }
@@ -621,7 +615,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 15</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 16</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -2964,10 +2958,9 @@
     fitHomeBar();
     window.addEventListener('resize', fitHomeBar);
     // iOS can shrink the window after launch without saying so: check again
-    // shortly after opening, and whenever the app's own height changes.
+    // shortly after opening.
     [300, 1000, 3000].forEach((ms) => setTimeout(fitHomeBar, ms));
     window.addEventListener('pageshow', fitHomeBar);
-    if (window.ResizeObserver) new ResizeObserver(fitHomeBar).observe(app);
   }
 
   if (!IN_GAS && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
