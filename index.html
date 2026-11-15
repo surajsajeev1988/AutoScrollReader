@@ -524,6 +524,7 @@
         <h1>Library</h1>
         <div class="head-actions">
           <span class="count" id="libCount"></span>
+          <button class="btn tiny hidden" id="connectBtn">Connect Drive</button>
           <button class="btn tiny" id="statsBtn">Stats</button>
           <button class="btn tiny hidden" id="fsBtn">Full screen</button>
           <button class="btn tiny hidden" id="editBtn">Edit</button>
@@ -581,7 +582,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 2</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 3</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -2890,7 +2891,22 @@
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
   if (!IN_GAS && !api) {
-    setTimeout(() => showNotice('This copy works offline. To sync with your Google Drive library, open your setup link once on this device.'), 400);
+    // A Home Screen app on iPhone keeps its own storage, separate from the
+    // browser, so it can't see a link opened in Safari or Chrome. Pasting
+    // the setup link here connects it.
+    const cb = $('connectBtn');
+    cb.classList.remove('hidden');
+    cb.addEventListener('click', () => {
+      const link = prompt('Paste your setup link (the one with #key=…):', '');
+      if (!link) return;
+      try {
+        const h = new URLSearchParams(link.slice(link.indexOf('#') + 1));
+        if (!h.get('key') || !h.get('api')) throw new Error('missing');
+        localStorage.setItem(API_STORE, JSON.stringify({ key: h.get('key'), url: h.get('api') }));
+        location.reload();
+      } catch (_) { alert('That doesn\'t look like the setup link. Copy the whole link, including the part after #.'); }
+    });
+    setTimeout(() => showNotice('Not connected to Google Drive on this device yet. Tap Connect Drive and paste your setup link.'), 400);
   }
   window.addEventListener('online', () => { if (!book && gas) refreshDrive(); });
 
