@@ -392,6 +392,12 @@
   }
   #content .chapter-start { margin-top: 0; }
   #content blockquote { margin: 1em 0; padding-left: 1em; border-left: 2px solid var(--line); color: var(--muted); }
+  /* The page only ever moves up and down: nothing in a book (a long link,
+     a wide table, an oversized picture) may push it sideways. */
+  #reader { overflow-x: hidden; overscroll-behavior-x: none; }
+  #content { max-width: 100%; overflow-wrap: break-word; }
+  #content * { max-width: 100%; }
+  #content :not(pre) { white-space: normal; }
   #content img { max-width: 100%; height: auto; display: block; margin: 1.2em auto; border-radius: 2px; }
   #content hr { border: none; border-top: 1px solid var(--line); margin: 2em 0; }
   #content ul, #content ol { margin: 0 0 1em; padding-left: 1.4em; }
@@ -584,7 +590,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 6</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 7</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -2798,6 +2804,9 @@
       else { app.classList.remove('nobar'); setFullscreen(false); showChrome(); }
     }, DBL_MS);
   });
+
+  // Belt and braces: if anything still nudges the page sideways, put it back.
+  reader.addEventListener('scroll', () => { if (reader.scrollLeft) reader.scrollLeft = 0; }, { passive: true });
 
   /* ---- pinch to resize the text ----
      Two fingers spread or pinch change the font size (same as the
