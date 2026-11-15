@@ -523,6 +523,22 @@
     background: var(--bg); font-family: var(--sans); font-size: 14px; color: var(--muted);
   }
 
+
+  /* ---- Compact library page: books start higher up the screen ---- */
+  #app .lib-inner { padding: 14px 16px 40px; }
+  #app .lib-head { margin-bottom: 12px; align-items: center; }
+  #app .lib-head h1 { font-size: 26px; }
+  .find-row { display: flex; gap: 8px; align-items: stretch; }
+  .find-row .search-wrap { flex: 1; min-width: 0; margin-top: 0; }
+  #app .find-row #libSearch { padding: 9px 40px 9px 14px; height: 100%; }
+  #app .find-row select { flex: none; max-width: 40%; border-radius: 12px; text-overflow: ellipsis; }
+  .chips { display: flex; align-items: center; gap: 8px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips .drive-links { display: contents; }
+  .chips > *, .chips .drive-links > * { flex: none; white-space: nowrap; }
+  #app .chips a.btn { padding: 7px 11px; }
+  #app .view-tabs { margin-top: 12px; }
+  #app .section-label { margin: 16px 2px 6px; }
   @media (prefers-reduced-motion: reduce) {
     #app *, #app *::before, #app *::after { transition: none !important; animation: none !important; }
   }
@@ -553,36 +569,34 @@
         <div class="dl-top"><span id="dlText"></span><button class="btn tiny" id="dlStop">Stop</button></div>
         <div class="dl-track"><i id="dlFill"></i></div>
       </div>
-      <div class="lib-actions">
-        <button class="btn primary" id="openBtn" style="flex:none">Open EPUB</button>
-        <button class="btn hidden" id="dlAllBtn">⬇ Download all</button>
-        <button class="btn" id="pasteBtn">Paste text</button>
-        <button class="btn" id="themeBtn2">Colours &amp; fonts</button>
+      <div class="find-row">
+        <div class="search-wrap">
+          <input id="libSearch" type="search" placeholder="Search your library" autocomplete="off" aria-label="Search your library">
+          <button class="btn tiny hidden" id="searchClear" aria-label="Clear search">✕</button>
+        </div>
+        <select id="sortSel" aria-label="Sort books">
+          <option value="recent">Recently read</option>
+          <option value="name">Name (A–Z)</option>
+          <option value="author">Author</option>
+          <option value="drive">Added to Drive</option>
+          <option value="local">Downloaded to this device</option>
+          <option value="progress">Most read</option>
+          <option value="unread">Not started first</option>
+          <option value="size">Size (largest)</option>
+        </select>
       </div>
-      <div class="search-wrap">
-        <input id="libSearch" type="search" placeholder="Search your library" autocomplete="off" aria-label="Search your library">
-        <button class="btn tiny hidden" id="searchClear" aria-label="Clear search">✕</button>
-      </div>
-      <div class="lib-tools">
-        <label class="sort-wrap">
-          <span>Sort</span>
-          <select id="sortSel" aria-label="Sort books">
-            <option value="recent">Recently read</option>
-            <option value="name">Name (A–Z)</option>
-            <option value="author">Author</option>
-            <option value="drive">Added to Drive</option>
-            <option value="local">Downloaded to this device</option>
-            <option value="progress">Most read</option>
-            <option value="unread">Not started first</option>
-            <option value="size">Size (largest)</option>
-          </select>
-        </label>
+      <!-- One row of small buttons; it scrolls sideways if they don't all fit. -->
+      <div class="chips">
+        <button class="btn tiny primary" id="openBtn">Open EPUB</button>
+        <button class="btn tiny hidden" id="dlAllBtn">⬇ Download all</button>
         <span class="drive-links hidden" id="driveLinks">
-          <span class="drive-state" id="driveState"></span>
           <button class="btn tiny" id="driveRefresh" aria-label="Sync with Google Drive">↻ Sync Drive</button>
-          <a class="btn tiny" target="_blank" rel="noopener"
-             href="https://drive.google.com/drive/folders/1PDgmGlytDOt4sfJ9ngcHDwUkOw9OFa2g">Drive folder</a>
+          <span class="drive-state" id="driveState"></span>
         </span>
+        <button class="btn tiny" id="themeBtn2">Colours &amp; fonts</button>
+        <button class="btn tiny" id="pasteBtn">Paste text</button>
+        <a class="btn tiny" target="_blank" rel="noopener"
+           href="https://drive.google.com/drive/folders/1PDgmGlytDOt4sfJ9ngcHDwUkOw9OFa2g">Drive folder</a>
       </div>
       <div class="view-tabs hidden" id="viewTabs" role="tablist">
         <button class="vtab" id="tabLibrary" role="tab" aria-selected="true">Library</button>
@@ -600,7 +614,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 11</div>
+    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 12</div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -2109,8 +2123,15 @@
     // Includes books started on another device and not yet downloaded here.
     const started = all.filter((b) => { const p = pctOf(b); return p > 0 && p < 99; }).sort(SORTS.recent);
     continueWrap.classList.toggle('hidden', started.length === 0 || searching || view === 'archive');
-    for (const b of started.slice(0, 3)) shelf.appendChild(b.remote ? makeDriveCard(b.remote, b.progress) : makeCard(b));
-    for (const b of items) grid.appendChild(b.remote ? makeDriveCard(b.remote, b.progress) : makeCard(b));
+    const onShelf = (searching || view === 'archive') ? [] : started.slice(0, 3);
+    for (const b of onShelf) shelf.appendChild(b.remote ? makeDriveCard(b.remote, b.progress) : makeCard(b));
+    // Sorted by "recently read", the list below would begin with the same
+    // books as the shelf above, so they are shown once.
+    const once = settings.sort === 'recent' && onShelf.length > 0;
+    const below = once ? items.filter((b) => !onShelf.includes(b)) : items;
+    $('allLabel').textContent = once ? 'More books' : 'All books';
+    $('allLabel').classList.toggle('hidden', below.length === 0);
+    for (const b of below) grid.appendChild(b.remote ? makeDriveCard(b.remote, b.progress) : makeCard(b));
     if (!searching && !items.length && view === 'archive') {
       const none = document.createElement('div'); none.className = 'search-empty';
       none.textContent = 'Nothing archived yet. Finished books can be moved here from the book’s × menu in Edit, or when you reach the end.';
