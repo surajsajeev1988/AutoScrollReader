@@ -431,14 +431,26 @@
   #app #bar .row.controls button.back-btn { font-size: 26px; padding: 1px 12px 5px; min-width: 48px; }
   #app #bar .row.controls button.btn { padding: 7px 10px; }
   #app #bar .row.controls { gap: 8px; }
-  /* Play/pause shows one combined icon. The button's words ("Play",
-     "Pause") stay in the page for screen readers but are not drawn. */
-  #app #bar #playBtn { font-size: 0; display: grid; place-items: center; min-height: 40px; }
-  #app #bar #playBtn::before {
-    content: ''; width: 42px; height: 22px; background: currentColor;
-    -webkit-mask: var(--pp) center / contain no-repeat; mask: var(--pp) center / contain no-repeat;
-    --pp: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 24'%3E%3Cpath d='M3 3.6v16.8a1.6 1.6 0 0 0 2.45 1.36l13.4-8.4a1.6 1.6 0 0 0 0-2.72L5.45 2.24A1.6 1.6 0 0 0 3 3.6z'/%3E%3Crect x='25' y='2' width='7.5' height='20' rx='2.2'/%3E%3Crect x='36' y='2' width='7.5' height='20' rx='2.2'/%3E%3C/svg%3E");
+  /* The six bar buttons share one look: equal width, same height, a plain
+     icon each. Their words and old symbols stay in the page for screen
+     readers but are not drawn. A button that is switched on turns gold. */
+  #app #bar .row.controls > button {
+    flex: 1 1 0; min-width: 0; width: auto; height: 42px; padding: 0; margin: 0;
+    font-size: 0 !important; line-height: 0; overflow: hidden; display: grid; place-items: center;
+    background: var(--line); color: var(--ink); border: 1px solid transparent; border-radius: 12px;
   }
+  #app #bar .row.controls > button.on { background: var(--accent); color: var(--accent-ink); }
+  #app #bar .row.controls > button::before {
+    content: ''; width: 24px; height: 24px; background: currentColor;
+    -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat;
+  }
+  #app #bar #playBtn::before { width: 40px; height: 21px; }
+  #app #bar #libBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M15%204.5%207.5%2012l7.5%207.5'/%3E%3C/svg%3E"); }
+  #app #bar #playBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2046%2024'%3E%3Cpath%20d='M3%203.6v16.8a1.6%201.6%200%200%200%202.45%201.36l13.4-8.4a1.6%201.6%200%200%200%200-2.72L5.45%202.24A1.6%201.6%200%200%200%203%203.6z'/%3E%3Crect%20x='25'%20y='2'%20width='7.5'%20height='20'%20rx='2.2'/%3E%3Crect%20x='36'%20y='2'%20width='7.5'%20height='20'%20rx='2.2'/%3E%3C/svg%3E"); }
+  #app #bar #ttsBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M4%209.2v5.6a1%201%200%200%200%201%201h2.9l4.4%203.7a.9.9%200%200%200%201.5-.7V5.2a.9.9%200%200%200-1.5-.7L7.900%208.200H5a1%201%200%200%200-1%201z'/%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M16.8%209.200a4%204%200%200%201%200%205.600M19.300%206.700a7.500%207.500%200%200%201%200%2010.600'/%3E%3C/svg%3E"); }
+  #app #bar #tocBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M5%207h14M5%2012h14M5%2017h14'/%3E%3C/svg%3E"); }
+  #app #bar #themeBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Ccircle%20cx='12'%20cy='12'%20r='8'%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Cpath%20d='M12%204a8%208%200%200%201%200%2016z'/%3E%3C/svg%3E"); }
+  #app #bar #fsBtn2 { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M5%209.500V5h4.500M14.500%205H19v4.500M19%2014.500V19h-4.500M9.500%2019H5v-4.500'/%3E%3C/svg%3E"); }
   #status {
     font-family: var(--sans); font-size: 12px; color: var(--muted);
     text-align: center; min-height: 15px; font-variant-numeric: tabular-nums;
@@ -2256,7 +2268,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '18 Nov · 5';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '18 Nov · 6';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
