@@ -691,7 +691,7 @@
              Their controls stay here, out of sight, because the code still reads them. -->
         <div class="row" style="display:none">
           <div class="slider-block">
-            <div class="speed-row"><button class="btn step" id="slowerBtn" aria-label="Slower">−</button><input type="range" id="speed" min="180" max="230" step="1" value="200" aria-label="Reading speed" style="display:none"><b id="speedVal" class="speed-val"></b><button class="btn step" id="fasterBtn" aria-label="Faster">+</button></div>
+            <div class="speed-row"><button class="btn step" id="slowerBtn" aria-label="Slower">−</button><input type="range" id="speed" min="10" max="2000" step="1" value="200" aria-label="Reading speed" style="display:none"><b id="speedVal" class="speed-val"></b><button class="btn step" id="fasterBtn" aria-label="Faster">+</button></div>
           </div>
           <div class="slider-block" style="display:none"><!-- size is set by pinching the text now -->
             <div class="slider-label"><span>Size</span><b id="fontVal"></b></div>
@@ -1176,12 +1176,13 @@
     { speed: 45, font: 20, theme: 'oled', face: 'iowan', sort: 'recent' },
     (() => { try { return JSON.parse(localStorage.getItem(SETTINGS) || '{}'); } catch (_) { return {}; } })()
   );
-  // Speed is now set in words per minute, 180-230. Older copies stored a
-  // 1-100 slider position; turn that into the same pace.
-  const WPM_MIN = 180, WPM_MAX = 230;
+  // Speed is set in words per minute. The limits are only there to stop
+  // nonsense (zero, or a blur): any pace a person could want is inside them.
+  // Older copies stored a 1-100 slider position; turn that into the same pace.
+  const WPM_MIN = 10, WPM_MAX = 2000;
   if (!(settings.wpm >= WPM_MIN && settings.wpm <= WPM_MAX)) {
     const old = 60 * Math.pow(15, ((+settings.speed || 45) - 1) / 99);
-    settings.wpm = Math.round(Math.min(WPM_MAX, Math.max(WPM_MIN, old)));
+    settings.wpm = Math.round(Math.min(230, Math.max(180, old)));
   }
   /* Reading positions get their own tiny record. Saving them used to
      rewrite the whole book entry, cover image included, every second or so. */
@@ -1324,14 +1325,14 @@
      quarters of the range on speeds nobody can read. */
   function pxPerSec() {
     const wpmSet = +speed.value;
-    const t = Math.log(wpmSet / MIN_WPM) / Math.log(MAX_WPM / MIN_WPM);
+    const t = Math.max(0, Math.min(1, Math.log(wpmSet / MIN_WPM) / Math.log(MAX_WPM / MIN_WPM)));
     // The slider sets words per minute, and pixels are worked out from how
     // dense the text is right now. Changing the text size therefore keeps
     // the reading pace instead of quietly slowing or speeding it.
     const wpp = book ? m().wordsPerPx : 0;
     if (wpp > 0 && isFinite(wpp)) {
       const wpm = wpmSet;
-      return Math.max(1, Math.min(600, wpm / 60 / wpp));
+      return Math.max(0.5, Math.min(3000, wpm / 60 / wpp));
     }
     return MIN_PPS * Math.pow(MAX_PPS / MIN_PPS, t);
   }
@@ -2288,7 +2289,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '18 Nov · 9';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '18 Nov · 10';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
