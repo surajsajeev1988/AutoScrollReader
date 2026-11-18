@@ -414,7 +414,7 @@
   #bar {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
     background: var(--panel); border-top: 1px solid var(--line);
-    padding: 8px 12px calc(6px + var(--sab)) 12px;
+    padding: 6px 12px calc(5px + var(--sab)) 12px;
     display: flex; flex-direction: column; gap: 7px;
     transition: transform 0.26s ease, opacity 0.26s ease;
   }
@@ -428,7 +428,9 @@
   .speed-val { flex: none; min-width: 78px; text-align: center; font: 600 13px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
   #app #bar button.fs-icon { width: 36px; height: 36px; font-size: 16px; align-self: center; }
   #app #bar .row.controls button.btn { padding: 8px 10px; }
-  #app #bar .row.controls button.back-btn { font-size: 28px; padding: 2px 12px 6px; min-width: 50px; }
+  #app #bar .row.controls button.back-btn { font-size: 26px; padding: 1px 12px 5px; min-width: 48px; }
+  #app #bar .row.controls button.btn { padding: 7px 10px; }
+  #app #bar .row.controls { gap: 8px; }
   #status {
     font-family: var(--sans); font-size: 12px; color: var(--muted);
     text-align: center; min-height: 15px; font-variant-numeric: tabular-nums;
@@ -645,7 +647,9 @@
     <div id="bar">
       <div class="bar-inner">
         <div id="status"></div>
-        <div class="row">
+        <!-- Speed and text size are set on the page itself now (edge taps, pinch).
+             Their controls stay here, out of sight, because the code still reads them. -->
+        <div class="row" style="display:none">
           <div class="slider-block">
             <div class="speed-row"><button class="btn step" id="slowerBtn" aria-label="Slower">−</button><input type="range" id="speed" min="180" max="230" step="1" value="200" aria-label="Reading speed" style="display:none"><b id="speedVal" class="speed-val"></b><button class="btn step" id="fasterBtn" aria-label="Faster">+</button></div>
           </div>
@@ -653,8 +657,6 @@
             <div class="slider-label"><span>Size</span><b id="fontVal"></b></div>
             <input type="range" id="font" min="14" max="40" value="20" aria-label="Text size">
           </div>
-          <button class="btn fs-icon" id="ttsBtn" aria-label="Read aloud" title="Read aloud">🔊</button>
-          <button class="btn fs-icon" id="fsBtn2" aria-label="Full screen" title="Full screen">⛶</button>
         </div>
         <div class="row controls">
           <button class="btn back-btn" id="libBtn" aria-label="Back to library" title="Back to library">‹</button>
@@ -662,6 +664,8 @@
           <button class="btn primary" id="playBtn">▶ Play</button>
           <button class="btn" id="backBtn" style="display:none" aria-label="Back three lines" title="Back three lines">↑</button>
           <button class="btn" id="fwdBtn" style="display:none" aria-label="Forward three lines" title="Forward three lines">↓</button>
+          <button class="btn fs-icon" id="ttsBtn" aria-label="Read aloud" title="Read aloud">🔊</button>
+          <button class="btn fs-icon" id="fsBtn2" aria-label="Full screen" title="Full screen">⛶</button>
           <button class="btn" id="themeBtn" aria-label="Colours" title="Colours">◐</button>
         </div>
       </div>
@@ -2244,7 +2248,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '18 Nov · 3';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '18 Nov · 4';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
