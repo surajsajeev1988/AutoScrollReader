@@ -540,6 +540,15 @@
   #app .chips a.btn { padding: 7px 11px; }
   #app .view-tabs { margin-top: 12px; }
   #app .section-label { margin: 16px 2px 6px; }
+  /* The little "+ 207 wpm" note after an edge tap. It floats over the page,
+     so showing it never moves the text. */
+  #speedPop {
+    position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 64px); transform: translateX(-50%);
+    padding: 7px 14px; border-radius: 999px; background: var(--panel); color: var(--ink);
+    border: 1px solid var(--line); font: 600 15px var(--sans); font-variant-numeric: tabular-nums;
+    opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 4; white-space: nowrap;
+  }
+  #speedPop.show { opacity: 1; }
   @media (prefers-reduced-motion: reduce) {
     #app *, #app *::before, #app *::after { transition: none !important; animation: none !important; }
   }
@@ -632,6 +641,7 @@
 
     <div id="reader" tabindex="0"><div id="content"></div></div>
 
+    <div id="speedPop" aria-hidden="true"></div>
     <div id="bar">
       <div class="bar-inner">
         <div id="status"></div>
@@ -1106,7 +1116,7 @@
     () => { MEM.books.delete(id); MEM.text.delete(id); },
     () => Promise.all([
       tx(BOOKS, 'readwrite', (s) => s.delete(id)),
-      tx(TEXT, 'readwrite', (s) => s.delete(id))
+      tx(TEXT, 'readwrite', (s) => { s.delete(id); return s.delete('raw:' + id); })
     ]));
 
   function bookId(title, author, size) {
@@ -1444,12 +1454,13 @@
     // Ease in on Play, ease out on Pause and on the sleep timer.
     if (ramp !== rampTarget) {
       ramp = rampTarget > ramp ? Math.min(rampTarget, ramp + dt / RAMP_UP) : Math.max(rampTarget, ramp - dt / rampDown);
-      if (ramp <= 0 && rampTarget <= 0) { stop(); if (sleepNote) { flash(sleepNote); sleepNote = ''; } return; }
+      if (ramp <= 0 && rampTarget <= 0) { stop(); if (sleepNote) { if (sleptAt) sleptAt.rest = reader.scrollTop; flash(sleepNote); sleepNote = ''; } return; }
     }
     pos += pxPerSec() * dt * ramp;
     countReading(dt * ramp);
     if (rampTarget > 0 && performance.now() > sleepAt) {
       sleepNote = 'Sleep timer: paused after 15 minutes';
+      sleptAt = { from: pos, rest: null, book: book && book.id };
       softStop(4);
     }
 
@@ -1481,6 +1492,8 @@
      on the page or the controls restarts the 15 minutes. */
   const RAMP_UP = 0.6, SLEEP_MS = 15 * 60 * 1000;
   let ramp = 1, rampTarget = 1, rampDown = 0.45, sleepAt = Infinity, sleepNote = '';
+  let sleptAt = null;        // where the sleep timer began to stop the page, and where it came to rest
+  const REWIND_S = 30;
   const wakeUp = () => { if (scrolling || speaking) sleepAt = performance.now() + SLEEP_MS; };
   function softStop(seconds) {
     if (!scrolling) return;
@@ -1492,9 +1505,18 @@
     if (speaking) stopSpeak();
     if (!book) return;
     if (reader.scrollTop >= endScroll() - 0.5) { flash('End of the book. Drag the bar at the top to go back.'); return; }
+    // After the sleep timer you had probably drifted off before it stopped,
+    // so carry on from half a minute earlier (unless you have moved since).
+    let rewound = false;
+    if (sleptAt && sleptAt.rest != null && sleptAt.book === book.id && Math.abs(reader.scrollTop - sleptAt.rest) < 60) {
+      reader.scrollTop = Math.max(0, sleptAt.from - pxPerSec() * REWIND_S);
+      rewound = true;
+    }
+    sleptAt = null;
     scrolling = true; lastT = 0; held = false; coast = false;
     ramp = 0; rampTarget = 1; sleepAt = performance.now() + SLEEP_MS;
     pos = applied = reader.scrollTop;
+    if (rewound) { noteAnchor(); flash('Went back ' + REWIND_S + ' seconds'); }
     playBtn.textContent = '❚❚ Pause';
     acquireWake();
     armChrome();
@@ -2191,7 +2213,14 @@
               const up = await gasCall('uploadBook', f.name, b64(new Uint8Array(buf)));
               last.driveId = up.id; await putBook(last);
               driveFiles.unshift(up);
-            } catch (e) { showNotice('Added here, but could not copy ' + cleanName(f.name) + ' to Drive: ' + gasMessage(e)); }
+            } catch (e) {
+              // Keep the file so it can be copied to Drive later, without being opened again.
+              let kept = false;
+              try { await tx(TEXT, 'readwrite', (st) => st.put({ id: 'raw:' + last.id, raw: buf, name: f.name })); kept = true; } catch (_) {}
+              showNotice(kept
+                ? 'Added here. ' + cleanName(f.name) + ' will be copied to Drive when you are back online.'
+                : 'Added here, but could not copy ' + cleanName(f.name) + ' to Drive: ' + gasMessage(e));
+            }
           }
         }
       }
@@ -2215,7 +2244,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '18 Nov · 1';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '18 Nov · 2';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
@@ -2388,6 +2417,36 @@
   }
 
   let syncing = false;
+  /* Books opened while offline (or when Drive could not be reached) kept
+     their file aside; send those to Drive now. */
+  let uploadingPending = false;
+  async function uploadPending() {
+    if (!gas || caps.readOnly || !navigator.onLine || uploadingPending || memoryOnly) return;
+    uploadingPending = true;
+    let sent = 0;
+    try {
+      const books = await allBooks() || [];
+      for (const b of books) {
+        if (b.kind !== 'epub' || b.driveId) continue;
+        let rec = null;
+        try { rec = await tx(TEXT, 'readonly', (st) => st.get('raw:' + b.id)); } catch (_) { break; }
+        if (!rec || !rec.raw) continue;
+        const already = driveFiles.find((d) => d.kind === 'epub' && d.size === b.size);
+        try {
+          if (already) b.driveId = already.id;
+          else {
+            const up = await gasCall('uploadBook', rec.name || b.fileName || b.title, b64(new Uint8Array(rec.raw)));
+            b.driveId = up.id; driveFiles.unshift(up); sent++;
+          }
+          await putBook(b);
+          await tx(TEXT, 'readwrite', (st) => st.delete('raw:' + b.id));
+        } catch (_) { break; }   // still unreachable: try again next time
+      }
+    } catch (_) {}
+    uploadingPending = false;
+    if (sent) { showNotice(sent + (sent === 1 ? ' book' : ' books') + ' opened offline ' + (sent === 1 ? 'is' : 'are') + ' now on Drive.'); if (!book) renderLibrary(); }
+  }
+
   async function refreshDrive(manual) {
     if (!gas || syncing) return;
     syncing = true;
@@ -2411,6 +2470,7 @@
       driveFiles = files || [];
       try { localStorage.setItem('autoscroll-reader/drive-list', JSON.stringify(driveFiles)); } catch (_) {}
       if (prog) mergeRemote(prog);
+      uploadPending();
       const added = hadList ? driveFiles.filter((d) => !before.has(d.id)).length : 0;
       const gone = hadList ? [...before].filter((id) => !driveFiles.some((d) => d.id === id)).length : 0;
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2814,6 +2874,16 @@
     speed.value = Math.min(WPM_MAX, Math.max(WPM_MIN, +speed.value + d));
     settings.wpm = +speed.value; saveSettings(); render(); showChrome();
   }
+  let popTimer = null;
+  function edgeSpeed(d) {
+    speed.value = Math.min(WPM_MAX, Math.max(WPM_MIN, +speed.value + d));
+    settings.wpm = +speed.value; saveSettings(); wakeUp(); render();
+    const pop = $('speedPop');
+    pop.textContent = (d < 0 ? '− ' : '+ ') + speed.value + ' wpm';
+    pop.classList.add('show');
+    clearTimeout(popTimer);
+    popTimer = setTimeout(() => pop.classList.remove('show'), 900);
+  }
   $('slowerBtn').addEventListener('click', () => nudgeSpeed(-2));
   $('fasterBtn').addEventListener('click', () => nudgeSpeed(2));
   font.addEventListener('input', () => {
@@ -2842,6 +2912,14 @@
       || Math.abs(reader.scrollTop - downTop) > 2;
     const selecting = !(window.getSelection() || { isCollapsed: true }).isCollapsed;
     if (moved || selecting || !book || pinch || performance.now() - pinchEnd < 400) return;
+    // A tap on the left or right edge changes the speed by 2 wpm, at once
+    // and without opening the bar. Only the middle plays, pauses and hides.
+    const edge = Math.max(44, window.innerWidth * 0.13);
+    if (e.clientX < edge || e.clientX > window.innerWidth - edge) {
+      clearTimeout(tapTimer); tapTimer = null; taps = 0;
+      edgeSpeed(e.clientX < edge ? -2 : 2);
+      return;
+    }
     const now = performance.now();
     const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 60;
     taps = (tapTimer && now - lastTap < DBL_MS && near) ? taps + 1 : 1;
