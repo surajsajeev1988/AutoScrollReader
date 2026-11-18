@@ -425,7 +425,7 @@
   /* Compact bar: no separate status line (the top row shows progress) and
      no "Speed" label; the wpm sits at the end of the slider row. */
   #status.quiet { display: none; }
-  .speed-val { flex: none; min-width: 34px; text-align: right; font: 600 13px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .speed-val { flex: none; min-width: 78px; text-align: center; font: 600 13px var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
   #app #bar button.fs-icon { width: 36px; height: 36px; font-size: 16px; align-self: center; }
   #app #bar .row.controls button.btn { padding: 8px 10px; }
   #app #bar .row.controls button.back-btn { font-size: 28px; padding: 2px 12px 6px; min-width: 50px; }
@@ -647,7 +647,7 @@
         <div id="status"></div>
         <div class="row">
           <div class="slider-block">
-            <div class="speed-row"><button class="btn step" id="slowerBtn" aria-label="Slower">−</button><input type="range" id="speed" min="180" max="230" step="1" value="200" aria-label="Reading speed"><button class="btn step" id="fasterBtn" aria-label="Faster">+</button><b id="speedVal" class="speed-val"></b></div>
+            <div class="speed-row"><button class="btn step" id="slowerBtn" aria-label="Slower">−</button><input type="range" id="speed" min="180" max="230" step="1" value="200" aria-label="Reading speed" style="display:none"><b id="speedVal" class="speed-val"></b><button class="btn step" id="fasterBtn" aria-label="Faster">+</button></div>
           </div>
           <div class="slider-block" style="display:none"><!-- size is set by pinching the text now -->
             <div class="slider-label"><span>Size</span><b id="fontVal"></b></div>
@@ -1421,7 +1421,7 @@
 
     const pps = pxPerSec();
     const wpm = Math.round(pps * m().wordsPerPx * 60);
-    speedVal.textContent = wpm > 0 && isFinite(wpm) ? String(wpm) : Math.round(pps) + ' px/s';
+    speedVal.textContent = wpm > 0 && isFinite(wpm) ? wpm + ' wpm' : Math.round(pps) + ' px/s';
     fontVal.textContent = font.value + 'px';
 
     if (flashUntil > performance.now()) { statusEl.classList.remove('quiet'); statusEl.textContent = flashMsg; return; }
@@ -2244,7 +2244,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '18 Nov · 2';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '18 Nov · 3';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
