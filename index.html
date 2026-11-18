@@ -2289,7 +2289,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '18 Nov · 10';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '18 Nov · 11';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
@@ -2960,12 +2960,12 @@
       || Math.abs(reader.scrollTop - downTop) > 2;
     const selecting = !(window.getSelection() || { isCollapsed: true }).isCollapsed;
     if (moved || selecting || !book || pinch || performance.now() - pinchEnd < 400) return;
-    // A tap on the left or right edge changes the speed by 2 wpm, at once
+    // A tap on the left or right edge changes the speed by 4 wpm, at once
     // and without opening the bar. Only the middle plays, pauses and hides.
     const edge = Math.max(44, window.innerWidth * 0.13);
     if (e.clientX < edge || e.clientX > window.innerWidth - edge) {
       clearTimeout(tapTimer); tapTimer = null; taps = 0;
-      edgeSpeed(e.clientX < edge ? -2 : 2);
+      edgeSpeed(e.clientX < edge ? -4 : 4);
       return;
     }
     const now = performance.now();
