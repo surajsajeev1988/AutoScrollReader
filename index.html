@@ -449,6 +449,11 @@
      green while the text is moving. */
   #app #bar .row.controls > #playBtn { flex: 1.7 1 0; background: #b3261e; color: #fff; }
   #app #bar .row.controls > #playBtn.playing { background: #1e8e3e; }
+  /* Two buttons sit left of play and three right of it. The left two are
+     half as wide again (and the row starts one gap in), so both sides take
+     exactly equal room and play is centred. */
+  #app #bar .row.controls { display: grid; grid-template-columns: 3fr 3fr 4fr 2fr 2fr 2fr; gap: 8px; padding-left: 8px; }
+  #app #bar .row.controls > button { width: 100%; }
   #app #bar #libBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M15%204.5%207.5%2012l7.5%207.5'/%3E%3C/svg%3E"); }
   #app #bar #playBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2046%2024'%3E%3Cpath%20d='M3%203.6v16.8a1.6%201.6%200%200%200%202.45%201.36l13.4-8.4a1.6%201.6%200%200%200%200-2.72L5.45%202.24A1.6%201.6%200%200%200%203%203.6z'/%3E%3Crect%20x='25'%20y='2'%20width='7.5'%20height='20'%20rx='2.2'/%3E%3Crect%20x='36'%20y='2'%20width='7.5'%20height='20'%20rx='2.2'/%3E%3C/svg%3E"); }
   #app #bar #ttsBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M4%209.2v5.6a1%201%200%200%200%201%201h2.9l4.4%203.7a.9.9%200%200%200%201.5-.7V5.2a.9.9%200%200%200-1.5-.7L7.900%208.200H5a1%201%200%200%200-1%201z'/%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M16.8%209.200a4%204%200%200%201%200%205.600M19.300%206.700a7.500%207.500%200%200%201%200%2010.600'/%3E%3C/svg%3E"); }
@@ -688,8 +693,7 @@
           <button class="btn primary" id="playBtn" title="Play or pause">▶ Play</button>
           <button class="btn" id="tocBtn" aria-label="Contents" title="Contents">≡</button>
           <button class="btn" id="themeBtn" aria-label="Colours" title="Colours">◐</button>
-          <!-- Full screen is a double-tap on the page now; the button is kept, unseen, for the code that refers to it. -->
-          <button class="btn fs-icon" id="fsBtn2" style="display:none" aria-label="Full screen" title="Full screen">⛶</button>
+          <button class="btn fs-icon" id="fsBtn2" aria-label="Full screen" title="Full screen">⛶</button>
           <button class="btn" id="backBtn" style="display:none" aria-label="Back three lines" title="Back three lines">↑</button>
           <button class="btn" id="fwdBtn" style="display:none" aria-label="Forward three lines" title="Forward three lines">↓</button>
         </div>
@@ -2273,7 +2277,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '18 Nov · 7';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '18 Nov · 8';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
