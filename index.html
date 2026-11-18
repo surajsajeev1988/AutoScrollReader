@@ -454,6 +454,17 @@
      exactly equal room and play is centred. */
   #app #bar .row.controls { display: grid; grid-template-columns: 3fr 3fr 4fr 2fr 2fr 2fr; gap: 8px; padding-left: 8px; }
   #app #bar .row.controls > button { width: 100%; }
+  /* No boxes: just the icons. Each button is still a full-size tap target.
+     Play/pause carries its colour in the icon itself (red paused, green
+     playing) and the speaker's icon turns gold while reading aloud. */
+  #app #bar .row.controls > button,
+  #app #bar .row.controls > button:hover,
+  #app #bar .row.controls > button.on { background: transparent; border-color: transparent; box-shadow: none; }
+  #app #bar .row.controls > button::before { width: 26px; height: 26px; }
+  #app #bar .row.controls > button.on { color: var(--accent); }
+  #app #bar .row.controls > #playBtn { background: transparent; color: #ff5a4f; }
+  #app #bar .row.controls > #playBtn.playing { background: transparent; color: #34c759; }
+  #app #bar .row.controls > #playBtn::before { width: 50px; height: 26px; }
   #app #bar #libBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M15%204.5%207.5%2012l7.5%207.5'/%3E%3C/svg%3E"); }
   #app #bar #playBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2046%2024'%3E%3Cpath%20d='M3%203.6v16.8a1.6%201.6%200%200%200%202.45%201.36l13.4-8.4a1.6%201.6%200%200%200%200-2.72L5.45%202.24A1.6%201.6%200%200%200%203%203.6z'/%3E%3Crect%20x='25'%20y='2'%20width='7.5'%20height='20'%20rx='2.2'/%3E%3Crect%20x='36'%20y='2'%20width='7.5'%20height='20'%20rx='2.2'/%3E%3C/svg%3E"); }
   #app #bar #ttsBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M4%209.2v5.6a1%201%200%200%200%201%201h2.9l4.4%203.7a.9.9%200%200%200%201.5-.7V5.2a.9.9%200%200%200-1.5-.7L7.900%208.200H5a1%201%200%200%200-1%201z'/%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M16.8%209.200a4%204%200%200%201%200%205.600M19.300%206.700a7.500%207.500%200%200%201%200%2010.600'/%3E%3C/svg%3E"); }
@@ -2277,7 +2288,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '18 Nov · 8';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '18 Nov · 9';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
