@@ -565,6 +565,7 @@
           <button class="btn tiny hidden" id="editBtn">Edit</button>
         </div>
       </div>
+      <button id="updateBar" class="btn primary hidden" style="width:100%;margin-bottom:10px">A newer version is ready. Tap to update</button>
       <div id="libNotice" class="notice hidden"></div>
       <div id="dlStrip" class="dl-strip hidden">
         <div class="dl-top"><span id="dlText"></span><button class="btn tiny" id="dlStop">Stop</button></div>
@@ -615,7 +616,7 @@
         Everything stays on this device.
       </div>
     </div>
-    <div style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px">Reader build 15 Nov · 16</div>
+    <div id="buildLabel" style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px"></div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -2183,6 +2184,7 @@
           const already = driveFiles.find((d) => d.kind === 'epub' && d.size === f.size)
             || driveFiles.find((d) => cleanName(d.name) === cleanName(f.name) && Math.abs(d.size - f.size) < 64);
           if (already) { last.driveId = already.id; await putBook(last); }
+          else if (caps.readOnly) { /* a read-only (friend) link keeps the book on this device only */ }
           else {
             showBusy('Copying ' + cleanName(f.name) + ' to Google Drive…');
             try {
@@ -2213,6 +2215,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
+  const BUILD = '18 Nov · 1';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
@@ -2732,7 +2735,7 @@
     const title = $('pasteTitle').value.trim() || text.trim().split('\n')[0].slice(0, 60) || 'Pasted text';
     const rec = await addPastedText(title, text);
     $('pasteText').value = ''; $('pasteTitle').value = '';
-    if (gas) {
+    if (gas && !caps.readOnly) {
       gasCall('uploadText', title, text).then(async (up) => {
         rec.driveId = up.id; rec.fileName = up.name; rec.size = up.size;
         await putBook(rec);
@@ -2972,19 +2975,48 @@
     // the setup link here connects it.
     const cb = $('connectBtn');
     cb.classList.remove('hidden');
-    cb.addEventListener('click', () => {
-      const link = prompt('Paste your setup link (the one with #key=…):', '');
+    const connectWith = (link) => {
+      const h = new URLSearchParams(String(link || '').slice(String(link || '').indexOf('#') + 1));
+      if (!h.get('key') || !h.get('api')) return false;
+      localStorage.setItem(API_STORE, JSON.stringify({ key: h.get('key'), url: h.get('api') }));
+      location.reload();
+      return true;
+    };
+    // Reading the copied link straight from the clipboard needs no keyboard.
+    // (On iPhone the keyboard can leave a Home Screen app's window shrunk.)
+    // The pop-up box is only the fallback.
+    cb.addEventListener('click', async () => {
+      let link = '';
+      try { if (navigator.clipboard && navigator.clipboard.readText) link = await navigator.clipboard.readText(); } catch (_) {}
+      if (connectWith(link)) return;
+      link = prompt('Copy your setup link (the one with #key=…), then paste it here:', '');
       if (!link) return;
-      try {
-        const h = new URLSearchParams(link.slice(link.indexOf('#') + 1));
-        if (!h.get('key') || !h.get('api')) throw new Error('missing');
-        localStorage.setItem(API_STORE, JSON.stringify({ key: h.get('key'), url: h.get('api') }));
-        location.reload();
-      } catch (_) { alert('That doesn\'t look like the setup link. Copy the whole link, including the part after #.'); }
+      if (!connectWith(link)) alert('That doesn\'t look like the setup link. Copy the whole link, including the part after #.');
     });
-    setTimeout(() => showNotice('Not connected to Google Drive on this device yet. Tap Connect Drive and paste your setup link.'), 400);
+    setTimeout(() => showNotice('Not connected to Google Drive on this device yet. Copy your setup link, then tap Connect Drive.'), 400);
   }
   window.addEventListener('online', () => { if (!book && gas) refreshDrive(); });
+
+  /* ---- "update ready" ----
+     Looks at the copy of this page on the web (never the saved one) and, if
+     its build number differs, offers a one-tap reload on the library page. */
+  $('buildLabel').textContent = 'Reader build ' + BUILD;
+  let updateSeen = false;
+  async function checkForUpdate() {
+    if (IN_GAS || updateSeen || !navigator.onLine || location.protocol === 'file:') return;
+    try {
+      const r = await fetch('index.html?check=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const m = (await r.text()).match(/const BUILD = '([^']+)'/);
+      if (!m || m[1] === BUILD) return;
+      updateSeen = true;
+      const bar = $('updateBar');
+      bar.classList.remove('hidden');
+      bar.onclick = () => location.reload();
+    } catch (_) {}
+  }
+  setTimeout(checkForUpdate, 4000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
 
   /* ---- start ---- */
   applyFace();
