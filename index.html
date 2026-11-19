@@ -2272,6 +2272,7 @@
   let progressTimer = null;
   function saveProgress() {
     if (!book || !blocks.length || opening) return;
+    if (recapTop !== null) return;      // only looking at the "you stopped here" mark: the place has not moved
     noteAnchor();
     const end = endScroll();
     const was = book.progress;
@@ -2282,7 +2283,7 @@
       d: book.driveId || null
     };
     // The day the book was finished: set the first time the end is reached, then kept.
-    if (book.progress.p >= 0.99) book.progress.done = (was && was.done) || Date.now();
+    if (isFin({ p: book.progress.p, done: was && was.done })) book.progress.done = (was && was.done) || Date.now();
     if (!writeProg(book.id, book.progress)) putBook(book).catch(() => {});
     queueSync(book.id, book.progress);
   }
@@ -2322,6 +2323,9 @@
     return wrap;
   }
 
+  // Finished: read to the end. Once marked, it stays finished unless you go well
+  // back into the book, so reopening it at the last page cannot knock it off the shelf.
+  function isFin(pr) { return !!pr && ((pr.p || 0) >= 0.985 || (!!pr.done && (pr.p || 0) >= 0.9)); }
   const pctOf = (b) => Math.round(((b.progress && b.progress.p) || 0) * 100);
 
   function makeCard(b) {
@@ -2340,7 +2344,7 @@
     meter.appendChild(bar);
     const label = document.createElement('div');
     label.className = 'card-pct';
-    label.textContent = pct >= 99 ? finishedLabel(b.progress) : pct > 0 ? pct + '% read' : 'Not started';
+    label.textContent = isFin(b.progress) ? finishedLabel(b.progress) : pct > 0 ? pct + '% read' : 'Not started';
 
     card.append(coverEl(b), title, author, meter, label);
     // Saved here. Gold instead of green when Drive does not have it yet.
@@ -2537,7 +2541,7 @@
     for (const it of everything) it.archived = isArchived(it);
     const nArch = everything.filter((it) => it.archived).length;
     // Finished books (read to the end) leave the main list for their own tab.
-    const isDone = (it) => pctOf(it) >= 99;
+    const isDone = (it) => isFin(it.progress);
     const nFin = everything.filter((it) => !it.archived && isDone(it)).length;
     if (view === 'finished' && !nFin) { view = 'library'; markTabs(); }
     $('tabArchive').textContent = 'Archive' + (nArch ? ' (' + nArch + ')' : '');
@@ -2689,7 +2693,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '19 Nov · 4';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '19 Nov · 5';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
@@ -2951,7 +2955,7 @@
     const a = document.createElement('div'); a.className = 'card-author';
     a.textContent = meta.au || (pct > 0 ? 'Read on another device' : 'Not on this device yet');
     const l = document.createElement('div'); l.className = 'card-pct';
-    l.textContent = pct >= 99 ? finishedLabel(pr) : pct > 0 ? pct + '% read' : '↓ ' + sizeLabel(d.size);
+    l.textContent = isFin(pr) ? finishedLabel(pr) : pct > 0 ? pct + '% read' : '↓ ' + sizeLabel(d.size);
     card.append(cover, t, a, l);
     const meter = document.createElement('div'); meter.className = 'card-meter';
     const bar = document.createElement('i'); bar.style.width = pct + '%'; meter.appendChild(bar);
