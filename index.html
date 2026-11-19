@@ -153,6 +153,30 @@
   #app .grid .card.remote .card-pct { max-width: 110px; white-space: normal; line-height: 1.3; }
   #app .cloud { right: 2px; bottom: 2px; font-size: 9px; padding: 1px 4px; }
   #app .grid .card-del, #app .shelf .card-del { top: 50%; right: 0; transform: translateY(-50%); }
+  /* Where each book lives, at the end of its row:
+       green phone with a tick = saved on this phone, reads offline;
+       gold phone              = on this phone only, not in Drive yet;
+       gold arrow              = in Drive only: tap it to save a copy here. */
+  #app .grid .card, #app .shelf .card {
+    grid-template-columns: 40px 1fr auto 34px;
+    grid-template-areas: "cover title pct state" "cover author pct state" "cover meter meter meter";
+  }
+  .card-state {
+    grid-area: state; justify-self: end; align-self: center; width: 34px; height: 38px;
+    display: grid; place-items: center; border-radius: 10px; color: #34c759;
+  }
+  .card-state::before {
+    content: ''; width: 22px; height: 22px; background: currentColor;
+    -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat;
+    --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='6'%20y='2.500'%20width='12'%20height='19'%20rx='2.600'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M9.200%2012.300l2.100%202.100%203.600-4.200'/%3E%3C/svg%3E");
+  }
+  .card-state.only { color: var(--accent); }
+  .card-state.get { color: var(--accent); background: var(--panel-2); cursor: pointer; }
+  .card-state.get::before { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M12%204v10.500M7.500%2010.500%2012%2015l4.500-4.500M5%2019.500h14'/%3E%3C/svg%3E"); }
+  .card.loading .card-state.get { animation: dlpulse 1.4s ease-in-out infinite; }
+  .grid.editing .card-state, .shelf.editing .card-state { display: none; }
+  .offline-line { margin: 12px 2px 0; font: 500 12.5px var(--sans); color: var(--muted); }
+  .offline-line b { color: #34c759; font-weight: 600; }
   #app .grid.editing .card-pct, #app .shelf.editing .card-pct { visibility: hidden; }
   #app .section-label { margin: 22px 2px 8px; }
 
@@ -678,6 +702,7 @@
         <div class="shelf" id="shelf"></div>
         <div class="section-label" id="allLabel">All books</div>
       </div>
+      <div class="offline-line hidden" id="offlineLine"></div>
       <div class="grid" id="grid" style="margin-top:22px"></div>
       <div class="drop hidden" id="drop">
         <strong>No books yet.</strong><br>
@@ -685,7 +710,8 @@
         Everything stays on this device.
       </div>
     </div>
-    <div id="buildLabel" style="text-align:center;opacity:.35;font-size:11px;padding:18px 0 24px"></div>
+    <div id="storeLine" style="text-align:center;opacity:.5;font-size:11.5px;line-height:1.5;padding:18px 18px 0"></div>
+    <div id="buildLabel" style="text-align:center;opacity:.35;font-size:11px;padding:8px 0 24px"></div>
   </section>
 
   <!-- ============ Reader ============ -->
@@ -2082,12 +2108,26 @@
     label.textContent = pct >= 99 ? 'Finished' : pct > 0 ? pct + '% read' : 'Not started';
 
     card.append(coverEl(b), title, author, meter, label);
+    // Saved here. Gold instead of green when Drive does not have it yet.
+    const onlyHere = !!gas && !b.driveId && !caps.readOnly;
+    card.appendChild(stateChip(onlyHere ? 'only' : 'saved',
+      onlyHere ? 'On this phone only, not in Drive yet' : 'Saved on this phone: reads offline',
+      () => showNotice(onlyHere
+        ? b.title + ' is saved on this phone only. It is not in your Drive folder yet.'
+        : b.title + ' is saved on this phone and reads without internet.')));
     card.addEventListener('click', () => { if (!editing) openBook(b); });
 
     card.appendChild(delButton(() => askRemove({ title: b.title, book: b })));
     return card;
   }
 
+  function stateChip(kind, label, onTap) {
+    const el = document.createElement('span');
+    el.className = 'card-state ' + kind;
+    el.setAttribute('role', 'button'); el.setAttribute('aria-label', label); el.title = label;
+    el.addEventListener('click', (e) => { e.stopPropagation(); if (!editing) onTap(); });
+    return el;
+  }
   function delButton(onTap) {
     const del = document.createElement('button');
     del.className = 'card-del'; del.type = 'button';
@@ -2181,6 +2221,20 @@
     searchInput.value = ''; $('searchClear').classList.add('hidden'); renderLibrary(); searchInput.focus();
   });
 
+  /* A line at the foot of the library: how much space the saved books
+     take, and whether the phone has promised not to clear them by itself. */
+  async function paintStore() {
+    const el = $('storeLine');
+    try {
+      if (!navigator.storage || !navigator.storage.estimate) { el.textContent = ''; return; }
+      const est = await navigator.storage.estimate();
+      const kept = navigator.storage.persisted ? await navigator.storage.persisted() : false;
+      const mb = (est.usage || 0) / 1048576;
+      el.textContent = 'Saved books use ' + (mb >= 10 ? Math.round(mb) : mb.toFixed(1)) + ' MB of this phone’s storage. '
+        + (kept ? 'The phone will not clear them by itself.' : 'The phone may clear them if it runs very low on space.');
+    } catch (_) { el.textContent = ''; }
+  }
+
   async function renderLibrary() {
     let books = [];
     try { books = await allBooks() || []; } catch (_) { books = []; }
@@ -2216,6 +2270,17 @@
     const all = everything.filter((it) => (view === 'archive') === it.archived);
     const q = searchQuery(), searching = q.length > 0;
     const items = (searching ? all.filter((it) => matches(it, q)) : all).sort(SORTS[settings.sort] || SORTS.recent);
+
+    // How many of the books in view are saved on this phone.
+    const line = $('offlineLine');
+    if (gas && all.length && !searching) {
+      const here = all.filter((it) => !it.remote).length, away = all.length - here;
+      line.innerHTML = '';
+      const b1 = document.createElement('b'); b1.textContent = here + ' saved on this phone';
+      line.append(b1, away ? ' · ' + away + ' in Drive only (tap the arrow to save)' : ' · everything reads offline');
+      line.classList.remove('hidden');
+    } else line.classList.add('hidden');
+    paintStore();
 
     grid.textContent = '';
     shelf.textContent = '';
@@ -2328,7 +2393,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '19 Nov · 1';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '19 Nov · 2';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
@@ -2598,6 +2663,8 @@
     if (!pct) meter.style.visibility = 'hidden';
     card.appendChild(meter);
     card.addEventListener('click', () => { if (!editing) fetchFromDrive(d); });
+    // The arrow saves a copy on this phone without opening the book.
+    card.appendChild(stateChip('get', 'Save on this phone', () => fetchInBackground(d, false)));
     if (dlNow.has(d.id)) requestAnimationFrame(() => paintDl(d.id));
     card.appendChild(delButton(() => askRemove({ title, remoteOnly: true, drive: d })));
     return card;
@@ -2617,12 +2684,13 @@
     for (const card of document.querySelectorAll('.card[data-drive-id="' + id + '"]')) {
       card.classList.toggle('loading', pct !== undefined);
       if (pct === undefined) continue;
-      const l = card.querySelector('.card-pct'); if (l) l.textContent = pct >= 100 ? 'Opening…' : '↓ ' + pct + '%';
+      const l = card.querySelector('.card-pct'); if (l) l.textContent = pct >= 100 ? (wantOpen === id ? 'Opening…' : 'Saving…') : '↓ ' + pct + '%';
       const m = card.querySelector('.card-meter'); if (m) { m.style.visibility = 'visible'; m.firstChild.style.width = pct + '%'; }
     }
   }
-  async function fetchInBackground(d) {
-    wantOpen = d.id;
+  async function fetchInBackground(d, open) {
+    if (open === false) { if (wantOpen === d.id) wantOpen = null; }
+    else wantOpen = d.id;
     if (dlNow.has(d.id) || (bulkRun && !bulkRun.stop)) {
       if (bulkRun) showNotice('Download all is running; this book will be ready as part of it.');
       return;
@@ -2640,7 +2708,7 @@
       dlNow.delete(d.id);
       await renderLibrary();
       if (wantOpen === d.id && !book && !sheetOpen()) openBook(rec);
-      else showNotice(shown(d) + ' is downloaded and ready.');
+      else showNotice(shown(d) + ' is saved on this phone and ready to read offline.');
     } catch (e) {
       dlNow.delete(d.id);
       renderLibrary();
