@@ -239,6 +239,19 @@
   .swatch .nm { font-family: var(--sans); font-size: 12px; color: var(--muted); }
   .swatch .ac { height: 4px; width: 55%; border-radius: 2px; background: var(--accent); }
   #app button.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--sel); }
+  .ap-preview {
+    margin: 14px 16px 0; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink); font-family: var(--read-font, var(--serif)); font-size: 19px; line-height: 1.6;
+  }
+  .ap-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px 0; }
+  #app .ap-toggle button.btn { padding: 14px 10px; font: 600 16px var(--sans); border-radius: 12px; }
+  #app .ap-toggle button.btn[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--sel); }
+  #app #apDark { background: #000; color: #fff; border: 1px solid #333; }
+  #app #apLight { background: #f6f1e7; color: #1d1b16; border: 1px solid #d9d2c3; }
+  .ap-more { margin: 12px 16px 0; border: 1px solid var(--line); border-radius: 12px; }
+  .ap-more summary { padding: 12px 14px; font: 600 14px var(--sans); color: var(--muted); cursor: pointer; }
+  .ap-more .swatches { padding: 4px 12px 12px; }
+  #app button.ap-reset { display: block; width: calc(100% - 32px); margin: 16px 16px 24px; padding: 12px; font: 500 14px var(--sans); color: var(--muted); }
   .sheet-sub { font-family: var(--sans); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.09em; padding: 14px 16px 0; }
   .face-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px 16px 6px; }
   #app button.face-btn {
@@ -452,7 +465,7 @@
   /* Two buttons sit left of play and three right of it. The left two are
      half as wide again (and the row starts one gap in), so both sides take
      exactly equal room and play is centred. */
-  #app #bar .row.controls { display: grid; grid-template-columns: 3fr 3fr 4fr 2fr 2fr 2fr; gap: 8px; padding-left: 8px; }
+  #app #bar .row.controls { display: grid; grid-template-columns: 2fr 2fr 3fr 2fr 2fr; gap: 8px; }
   #app #bar .row.controls > button { width: 100%; }
   /* No boxes: just the icons. Each button is still a full-size tap target.
      Play/pause carries its colour in the icon itself (red paused, green
@@ -465,6 +478,11 @@
   #app #bar .row.controls > #playBtn { background: transparent; color: #ff5a4f; }
   #app #bar .row.controls > #playBtn.playing { background: transparent; color: #34c759; }
   #app #bar .row.controls > #playBtn::before { width: 50px; height: 26px; }
+  /* Appearance (colours and font) is the "Aa" every reading app uses. */
+  #app #bar .row.controls > #themeBtn::before {
+    content: 'Aa'; width: auto; height: auto; background: none; -webkit-mask: none; mask: none;
+    font: 600 22px/1 var(--serif); color: currentColor;
+  }
   #app #bar #libBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M15%204.5%207.5%2012l7.5%207.5'/%3E%3C/svg%3E"); }
   #app #bar #playBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2046%2024'%3E%3Cpath%20d='M3%203.6v16.8a1.6%201.6%200%200%200%202.45%201.36l13.4-8.4a1.6%201.6%200%200%200%200-2.72L5.45%202.24A1.6%201.6%200%200%200%203%203.6z'/%3E%3Crect%20x='25'%20y='2'%20width='7.5'%20height='20'%20rx='2.2'/%3E%3Crect%20x='36'%20y='2'%20width='7.5'%20height='20'%20rx='2.2'/%3E%3C/svg%3E"); }
   #app #bar #ttsBtn { --ic: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M4%209.2v5.6a1%201%200%200%200%201%201h2.9l4.4%203.7a.9.9%200%200%200%201.5-.7V5.2a.9.9%200%200%200-1.5-.7L7.900%208.200H5a1%201%200%200%200-1%201z'/%3E%3Cpath%20fill='none'%20stroke='black'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M16.8%209.200a4%204%200%200%201%200%205.600M19.300%206.700a7.500%207.500%200%200%201%200%2010.600'/%3E%3C/svg%3E"); }
@@ -646,7 +664,7 @@
           <button class="btn tiny" id="driveRefresh" aria-label="Sync with Google Drive">↻ Sync Drive</button>
           <span class="drive-state" id="driveState"></span>
         </span>
-        <button class="btn tiny" id="themeBtn2">Colours &amp; fonts</button>
+        <button class="btn tiny" id="themeBtn2">Appearance</button>
         <button class="btn tiny" id="pasteBtn">Paste text</button>
         <a class="btn tiny" target="_blank" rel="noopener"
            href="https://drive.google.com/drive/folders/1PDgmGlytDOt4sfJ9ngcHDwUkOw9OFa2g">Drive folder</a>
@@ -700,11 +718,12 @@
         </div>
         <div class="row controls">
           <button class="btn back-btn" id="libBtn" aria-label="Back to library" title="Back to library">‹</button>
-          <button class="btn fs-icon" id="ttsBtn" aria-label="Read aloud" title="Read aloud">🔊</button>
-          <button class="btn primary" id="playBtn" title="Play or pause">▶ Play</button>
           <button class="btn" id="tocBtn" aria-label="Contents" title="Contents">≡</button>
-          <button class="btn" id="themeBtn" aria-label="Colours" title="Colours">◐</button>
+          <button class="btn primary" id="playBtn" title="Play or pause">▶ Play</button>
+          <button class="btn" id="themeBtn" aria-label="Appearance: colours and font" title="Appearance">◐</button>
           <button class="btn fs-icon" id="fsBtn2" aria-label="Full screen" title="Full screen">⛶</button>
+          <!-- Read aloud is switched off; its button stays, unseen, for the code that refers to it. -->
+          <button class="btn fs-icon" id="ttsBtn" style="display:none" aria-label="Read aloud" title="Read aloud">🔊</button>
           <button class="btn" id="backBtn" style="display:none" aria-label="Back three lines" title="Back three lines">↑</button>
           <button class="btn" id="fwdBtn" style="display:none" aria-label="Forward three lines" title="Forward three lines">↓</button>
         </div>
@@ -735,14 +754,24 @@
   <div id="themeSheet" class="sheet hidden">
     <div class="sheet-body">
       <div class="sheet-head">
-        <h2>Colours &amp; fonts</h2>
+        <h2>Appearance</h2>
         <button class="btn" id="themeClose">Done</button>
       </div>
       <div class="sheet-scroll">
-        <div class="swatches" id="swatches"></div>
-        <div class="sheet-sub">Reading font</div>
+        <!-- What the page will look like with the current choices. -->
+        <div class="ap-preview" id="apPreview">A reader lives a thousand lives before the day is done. This is how your page will look.</div>
+        <div class="ap-toggle">
+          <button type="button" class="btn" id="apDark">Dark</button>
+          <button type="button" class="btn" id="apLight">Light</button>
+        </div>
+        <details class="ap-more">
+          <summary>More colours</summary>
+          <div class="swatches" id="swatches"></div>
+        </details>
+        <div class="sheet-sub">Font</div>
         <div class="face-grid" id="faceGrid">
         </div>
+        <button type="button" class="btn ap-reset" id="apReset">Back to the usual: black page, Iowan font</button>
       </div>
     </div>
   </div>
@@ -1287,7 +1316,15 @@
       b.setAttribute('aria-pressed', settings.theme === id ? 'true' : 'false');
     }
     for (const b of faceGrid.children) b.setAttribute('aria-pressed', b.dataset.face === settings.face ? 'true' : 'false');
+    $('apDark').setAttribute('aria-pressed', settings.theme === 'oled' ? 'true' : 'false');
+    $('apLight').setAttribute('aria-pressed', settings.theme === 'paper' ? 'true' : 'false');
   }
+  const pickTheme = (id) => { settings.theme = id; saveSettings(); applyTheme(); };
+  $('apDark').addEventListener('click', () => pickTheme('oled'));
+  $('apLight').addEventListener('click', () => pickTheme('paper'));
+  $('apReset').addEventListener('click', () => {
+    settings.theme = 'oled'; settings.face = 'iowan'; saveSettings(); applyTheme(); applyFace(); markSwatches();
+  });
   for (const [id, f] of Object.entries(FACES)) {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'face-btn'; b.dataset.face = id;
@@ -1301,6 +1338,8 @@
   if (!THEMES.some(([id]) => id === settings.theme)) settings.theme = 'oled';
   // Pitch black became the default (Nov 2026): move devices still on the old defaults.
   if (!settings.themeV) { if (settings.theme === 'auto' || settings.theme === 'night') settings.theme = 'oled'; settings.themeV = 2; saveSettings(); }
+  // 19 Nov: the usual look is the black page with Iowan. Set once; any later choice is kept.
+  if (settings.themeV < 3) { settings.theme = 'oled'; settings.face = 'iowan'; settings.themeV = 3; saveSettings(); }
   // Older saved choices: "serif" was Iowan, "sans" the system sans.
   if (settings.face === 'serif') settings.face = 'iowan';
   if (settings.face === 'sans') settings.face = 'system';
@@ -2289,7 +2328,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '18 Nov · 11';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '19 Nov · 1';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
