@@ -633,6 +633,96 @@
     opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 4; white-space: nowrap;
   }
   #speedPop.show { opacity: 1; }
+
+  /* ---------- Front screen polish (19 Nov) ---------- */
+  .head-actions { position: relative; }
+  #app #moreBtn { font-size: 18px; line-height: 1; padding: 4px 12px 8px; }
+  .more-pop {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 6; min-width: 170px;
+    display: flex; flex-direction: column; gap: 2px; padding: 6px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px var(--shadow);
+    animation: popIn .14s ease-out;
+  }
+  #app .more-pop button.btn { text-align: left; background: transparent; border: none; padding: 10px 12px; font-size: 14px; }
+  #app .more-pop button.btn:active { background: var(--panel-2); }
+  @keyframes popIn { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+  @keyframes sheetUp { from { transform: translateY(28px); opacity: .5; } }
+  .sheet:not(.hidden) .sheet-body { animation: sheetUp .2s ease-out; }
+  @keyframes noteIn { from { opacity: 0; transform: translateY(-4px); } }
+  .notice:not(.hidden), #updateBar:not(.hidden) { animation: noteIn .2s ease-out; }
+
+  /* The book you are in, one tap from the top of the page. */
+  #app button.hero {
+    display: grid; grid-template-columns: 78px 1fr; column-gap: 15px; align-items: center; width: 100%;
+    margin-top: 12px; padding: 14px; text-align: left; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px; color: var(--ink);
+  }
+  #app button.hero:active { background: var(--panel-2); }
+  .hero .cover { width: 78px; aspect-ratio: 2 / 3; border-radius: 6px; box-shadow: 0 2px 10px var(--shadow); }
+  .hero .cover.gen { padding: 0; display: grid; place-items: center; }
+  .hero .cover.gen > div { display: none; }
+  .hero .cover.gen::after { content: attr(data-initial); font: 600 34px var(--serif); color: #fff; }
+  .hero-k { font: 600 11px var(--sans); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+  .hero-title { font: 600 19px/1.25 var(--serif); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .hero-author { font: 400 13px var(--sans); color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero-meter { height: 4px; border-radius: 2px; background: var(--line); margin-top: 10px; overflow: hidden; }
+  .hero-meter i { display: block; height: 100%; background: var(--accent); }
+  .hero-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+  .hero-pct { font: 500 12.5px var(--sans); color: var(--muted); }
+  .hero-go { font: 600 14px var(--sans); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 7px 16px; }
+
+  /* Books without cover art get a coloured cover of their own. */
+  .cover.gen::before { background: rgba(0, 0, 0, .28); opacity: 1; }
+  .cover.gen .gen-title { color: #fff; }
+  .cover.gen .gen-author { color: rgba(255, 255, 255, .72); }
+  #app .grid .cover.gen::after, #app .shelf .cover.gen::after { color: #fff; }
+
+  /* Covers view: a shelf of covers, three across. */
+  #app .grid.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 12px; border-top: none; }
+  #app .grid.tiles .card {
+    display: flex; flex-direction: column; align-items: stretch; gap: 5px; position: relative;
+    padding: 0; border-bottom: none; min-width: 0;
+  }
+  #app .grid.tiles .cover { width: 100%; border-radius: 6px; }
+  #app .grid.tiles .cover.gen { display: flex; flex-direction: column; justify-content: space-between; padding: 12px 9px 9px 13px; }
+  #app .grid.tiles .cover.gen > div { display: block; }
+  #app .grid.tiles .cover.gen::after { content: none; }
+  #app .grid.tiles .cover.gen::before { width: 5px; }
+  #app .grid.tiles .cover.gen .gen-title { font-size: 12px; line-height: 1.25; }
+  #app .grid.tiles .cover.gen .gen-author { font-size: 8px; }
+  #app .grid.tiles .card-title { font-size: 12.5px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #app .grid.tiles .card-author, #app .grid.tiles .card-pct { display: none; }
+  #app .grid.tiles .card-meter { margin-top: 0; }
+  #app .grid.tiles .card-state { position: absolute; top: 5px; right: 5px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0, 0, 0, .62); }
+  #app .grid.tiles .card-state::before { width: 17px; height: 17px; }
+  #app .grid.tiles .card-del { top: 5px; right: 5px; transform: none; }
+  #app .grid.tiles .search-empty { grid-column: 1 / -1; }
+
+  /* While a book downloads, its arrow sits in a ring that fills up. */
+  #app .card.loading .card-state.get {
+    animation: none; border-radius: 50%; width: 34px; height: 34px;
+    background: radial-gradient(closest-side, var(--bg) 76%, transparent 78%),
+                conic-gradient(var(--accent) calc(var(--p, 0) * 1%), var(--line) 0);
+  }
+
+  /* Welcome, and the one-line tip */
+  .drop-art { width: 96px; height: 64px; color: var(--accent); display: block; margin: 0 auto 14px; }
+  .drop strong { font: 600 19px var(--serif); display: block; margin-bottom: 12px; }
+  .drop .steps { text-align: left; max-width: 330px; margin: 0 auto; padding-left: 20px; display: grid; gap: 9px; }
+  .drop .steps b { color: var(--ink); font-weight: 600; }
+  .tip { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 9px 9px 9px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); font: 500 13.5px var(--sans); color: var(--muted); }
+  .tip span { flex: 1; }
+  .help-list { list-style: none; margin: 0; padding: 8px 16px 24px; }
+  .help-list li { display: grid; gap: 2px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .help-list b { font: 600 15px var(--sans); color: var(--ink); }
+  .help-list span { font: 400 14px/1.45 var(--sans); color: var(--muted); }
+
+  /* Chapter marks on the progress line */
+  #progressTicks { position: absolute; inset: 0; pointer-events: none; }
+  #progressTicks i { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--bg); opacity: .9; }
+
+  /* Bedtime: dim amber on black, for a dark room. */
+  [data-theme="ember"] { --bg:#000000; --panel:#0d0906; --panel-2:#171008; --ink:#e0a060; --muted:#8a6338; --line:#22170b; --accent:#c9772e; --accent-ink:#000000; --shadow:rgba(0,0,0,0.5); color-scheme: dark; }
   @media (prefers-reduced-motion: reduce) {
     #app *, #app *::before, #app *::after { transition: none !important; animation: none !important; }
   }
@@ -653,9 +743,15 @@
         <div class="head-actions">
           <span class="count" id="libCount"></span>
           <button class="btn tiny hidden" id="connectBtn">Connect Drive</button>
-          <button class="btn tiny" id="statsBtn">Stats</button>
-          <button class="btn tiny hidden" id="fsBtn">Full screen</button>
-          <button class="btn tiny hidden" id="editBtn">Edit</button>
+          <button class="btn tiny primary hidden" id="editDone">Done</button>
+          <button class="btn tiny" id="moreBtn" aria-label="More" aria-haspopup="true">⋯</button>
+          <!-- The less-used actions live in this small menu. -->
+          <div class="more-pop hidden" id="morePop">
+            <button class="btn tiny" id="statsBtn">Reading stats</button>
+            <button class="btn tiny hidden" id="editBtn">Edit</button>
+            <button class="btn tiny hidden" id="fsBtn">Full screen</button>
+            <button class="btn tiny" id="helpBtn">How it works</button>
+          </div>
         </div>
       </div>
       <button id="updateBar" class="btn primary hidden" style="width:100%;margin-bottom:10px">A newer version is ready. Tap to update</button>
@@ -688,6 +784,7 @@
           <button class="btn tiny" id="driveRefresh" aria-label="Sync with Google Drive">↻ Sync Drive</button>
           <span class="drive-state" id="driveState"></span>
         </span>
+        <button class="btn tiny" id="viewBtn" aria-label="Switch between list and covers">▦ Covers</button>
         <button class="btn tiny" id="themeBtn2">Appearance</button>
         <button class="btn tiny" id="pasteBtn">Paste text</button>
         <a class="btn tiny" target="_blank" rel="noopener"
@@ -697,17 +794,23 @@
         <button class="vtab" id="tabLibrary" role="tab" aria-selected="true">Library</button>
         <button class="vtab" id="tabArchive" role="tab" aria-selected="false">Archive</button>
       </div>
+      <div class="tip hidden" id="tipCard"><span>New here? See how the taps work.</span><button class="btn tiny" id="tipOpen">Show me</button><button class="btn tiny" id="tipClose" aria-label="Dismiss">×</button></div>
+      <button type="button" class="hero hidden" id="hero"></button>
       <div id="continueWrap" class="hidden">
-        <div class="section-label">Continue reading</div>
+        <div class="section-label">Also reading</div>
         <div class="shelf" id="shelf"></div>
         <div class="section-label" id="allLabel">All books</div>
       </div>
       <div class="offline-line hidden" id="offlineLine"></div>
       <div class="grid" id="grid" style="margin-top:22px"></div>
       <div class="drop hidden" id="drop">
-        <strong>No books yet.</strong><br>
-        Drop an EPUB here, or use Open EPUB above.<br>
-        Everything stays on this device.
+        <svg class="drop-art" viewBox="0 0 120 80" aria-hidden="true"><path d="M60 18c-10-8-26-9-40-5v48c14-4 30-3 40 5 10-8 26-9 40-5V13c-14-4-30-3-40 5z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M60 18v48M30 28h18M30 38h18M30 48h14M72 28h18M72 38h18M72 48h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        <strong>Welcome to Reader</strong>
+        <ol class="steps">
+          <li><b>Add a book.</b> Tap Connect Drive to see your library, or Open EPUB for a file on this phone.</li>
+          <li><b>Save it.</b> The gold arrow on a book keeps a copy here for reading offline.</li>
+          <li><b>Read.</b> Tap a book and the page scrolls by itself.</li>
+        </ol>
       </div>
     </div>
     <div id="storeLine" style="text-align:center;opacity:.5;font-size:11.5px;line-height:1.5;padding:18px 18px 0"></div>
@@ -718,6 +821,7 @@
   <section id="readerView" class="view hidden">
     <div id="progress">
       <div id="progressFill"></div>
+      <div id="progressTicks" aria-hidden="true"></div>
       <div id="progressHit" title="Drag to move through the book"></div>
     </div>
     <div id="foot" aria-hidden="true">
@@ -798,6 +902,29 @@
         <div class="face-grid" id="faceGrid">
         </div>
         <button type="button" class="btn ap-reset" id="apReset">Back to the usual: black page, Iowan font</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ How it works ============ -->
+  <div id="helpSheet" class="sheet hidden">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h2>How it works</h2>
+        <button class="btn" id="helpClose">Done</button>
+      </div>
+      <div class="sheet-scroll">
+        <ul class="help-list">
+          <li><b>Tap the middle</b><span>Play or pause.</span></li>
+          <li><b>Tap the right or left edge</b><span>Faster or slower, 4 words a minute each tap.</span></li>
+          <li><b>Double-tap</b><span>Hide the bar and go full screen.</span></li>
+          <li><b>Triple-tap</b><span>Bring the bar back.</span></li>
+          <li><b>Pinch with two fingers</b><span>Bigger or smaller text.</span></li>
+          <li><b>Drag the page</b><span>Move through the book yourself.</span></li>
+          <li><b>Gold line at the top</b><span>Your place in the book. The small marks are chapters; drag along it to jump.</span></li>
+          <li><b>After 15 minutes</b><span>The page stops by itself. Press play and it picks up 30 seconds earlier.</span></li>
+          <li><b>In the library</b><span>A green phone means the book is saved here and reads offline. A gold arrow saves it.</span></li>
+        </ul>
       </div>
     </div>
   </div>
@@ -1319,10 +1446,9 @@
     if (book) { invalidate(); requestAnimationFrame(() => reflowTo(keep)); }
   }
 
+  // Black and Paper are the two big buttons; these four sit under "More colours".
   const THEMES = [
-    ['auto', 'Device'], ['night', 'Brass'], ['saffron', 'Saffron'], ['amber', 'Amber'],
-    ['oled', 'Black'], ['midnight', 'Midnight'], ['forest', 'Forest'], ['slate', 'Slate'],
-    ['rose', 'Rose'], ['paper', 'Paper'], ['parchment', 'Parchment'], ['sepia', 'Sepia'], ['sky', 'Sky']
+    ['ember', 'Bedtime'], ['midnight', 'Midnight'], ['slate', 'Slate'], ['sepia', 'Sepia']
   ];
   const swatchBox = $('swatches');
   for (const [id, name] of THEMES) {
@@ -1412,7 +1538,22 @@
     const textH = Math.max(1, reader.scrollHeight - padT - padB);
     const words = book && book.words ? book.words : (content.textContent.match(/\S+/g) || []).length;
     metrics = { padT, lineH, textH, words, wordsPerPx: words / textH };
+    paintTicks(padT, textH);
     return metrics;
+  }
+  /* Small gaps in the progress line where chapters begin. Drawn whenever
+     the page is measured afresh (a new book, a new text size). */
+  function paintTicks(padT, textH) {
+    const box = $('progressTicks');
+    box.textContent = '';
+    if (!book || sections.length < 2 || sections.length > 120) return;
+    const reach = Math.max(1, Math.min(reader.scrollHeight - reader.clientHeight, padT + textH - reader.clientHeight * 0.5));
+    for (let i = 1; i < sections.length; i++) {
+      const at = sections[i].offsetTop / reach;
+      if (!(at > 0.004 && at < 0.996)) continue;
+      const t = document.createElement('i'); t.style.left = (at * 100).toFixed(2) + '%';
+      box.appendChild(t);
+    }
   }
   const invalidate = () => { metrics = null; };
   const maxScroll = () => Math.max(0, reader.scrollHeight - reader.clientHeight);
@@ -2077,6 +2218,11 @@
       // Most EPUBs in the wild have no usable cover art, so compose one
       // from the title instead of showing an empty rectangle.
       wrap.classList.add('gen');
+      // A steady colour per title, so each book is recognisable at a glance.
+      let h = 0; const key = String(b.title || '');
+      for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+      const hue = h % 360;
+      wrap.style.background = 'linear-gradient(160deg, hsl(' + hue + ' 42% 32%), hsl(' + ((hue + 28) % 360) + ' 50% 17%))';
       wrap.dataset.initial = (String(b.title || '?').replace(/^\s*(the|a|an)\s+/i, '').trim()[0] || '?').toUpperCase();
       const t = document.createElement('div');
       t.className = 'gen-title'; t.textContent = b.title;
@@ -2235,6 +2381,29 @@
     } catch (_) { el.textContent = ''; }
   }
 
+  function paintHero(it) {
+    const hero = $('hero');
+    hero.classList.toggle('hidden', !it);
+    hero.textContent = '';
+    if (!it) { hero.onclick = null; return; }
+    const d = it.remote || null;
+    const meta = d ? infoFor(d.id) : null;
+    const title = d ? (meta.ti || cleanName(d.name)) : it.title;
+    const author = d ? (meta.au || '') : (it.author || '');
+    const pct = pctOf(it);
+    const cover = coverEl(d ? { title, author: '', kind: d.kind === 'text' ? 'text' : 'epub', driveId: d.id } : it);
+    const box = document.createElement('div');
+    const el = (cls, text) => { const x = document.createElement('div'); x.className = cls; if (text != null) x.textContent = text; return x; };
+    const meter = el('hero-meter'); const bar = document.createElement('i'); bar.style.width = pct + '%'; meter.appendChild(bar);
+    const foot = el('hero-foot');
+    foot.append(el('hero-pct', pct + '% read' + (d ? ' · tap to download' : '')), el('hero-go', 'Resume'));
+    box.append(el('hero-k', 'Continue reading'), el('hero-title', title));
+    if (author) box.append(el('hero-author', author));
+    box.append(meter, foot);
+    hero.append(cover, box);
+    hero.onclick = () => { if (editing) return; if (d) fetchFromDrive(d); else openBook(it); };
+  }
+
   async function renderLibrary() {
     let books = [];
     try { books = await allBooks() || []; } catch (_) { books = []; }
@@ -2296,12 +2465,17 @@
     // Includes books started on another device and not yet downloaded here.
     const started = all.filter((b) => { const p = pctOf(b); return p > 0 && p < 99; }).sort(SORTS.recent);
     continueWrap.classList.toggle('hidden', started.length === 0 || searching || view === 'archive');
-    const onShelf = (searching || view === 'archive') ? [] : started.slice(0, 3);
+    // The latest one gets the big card; the next two sit under "Also reading".
+    const lead = (searching || view === 'archive') ? null : (started[0] || null);
+    paintHero(lead);
+    const onShelf = lead ? started.slice(1, 3) : [];
+    continueWrap.classList.toggle('hidden', !lead);
+    continueWrap.firstElementChild.classList.toggle('hidden', onShelf.length === 0);
     for (const b of onShelf) shelf.appendChild(b.remote ? makeDriveCard(b.remote, b.progress) : makeCard(b));
     // Sorted by "recently read", the list below would begin with the same
     // books as the shelf above, so they are shown once.
-    const once = settings.sort === 'recent' && onShelf.length > 0;
-    const below = once ? items.filter((b) => !onShelf.includes(b)) : items;
+    const once = settings.sort === 'recent' && !!lead;
+    const below = once ? items.filter((b) => b !== lead && !onShelf.includes(b)) : items;
     $('allLabel').textContent = once ? 'More books' : 'All books';
     $('allLabel').classList.toggle('hidden', below.length === 0);
     for (const b of below) grid.appendChild(b.remote ? makeDriveCard(b.remote, b.progress) : makeCard(b));
@@ -2319,13 +2493,17 @@
 
     grid.classList.toggle('editing', editing);
     shelf.classList.toggle('editing', editing);
+    grid.classList.toggle('tiles', !!settings.tiles);
+    $('viewBtn').textContent = settings.tiles ? '☰ List' : '▦ Covers';
+    $('tipCard').classList.toggle('hidden', !!settings.tipSeen || everything.length === 0 || searching);
     queueCovers();
     refreshDlBtn();
   }
 
   function setEditing(on) {
     editing = on;
-    editBtn.textContent = on ? 'Done' : 'Edit';
+    editBtn.textContent = on ? 'Done editing' : 'Edit';
+    $('editDone').classList.toggle('hidden', !on);
     grid.classList.toggle('editing', on);
     shelf.classList.toggle('editing', on);
   }
@@ -2393,7 +2571,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '19 Nov · 2';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '19 Nov · 3';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
@@ -2683,6 +2861,7 @@
     const pct = dlNow.get(id);
     for (const card of document.querySelectorAll('.card[data-drive-id="' + id + '"]')) {
       card.classList.toggle('loading', pct !== undefined);
+      card.style.setProperty('--p', pct === undefined ? 0 : pct);
       if (pct === undefined) continue;
       const l = card.querySelector('.card-pct'); if (l) l.textContent = pct >= 100 ? (wantOpen === id ? 'Opening…' : 'Saving…') : '↓ ' + pct + '%';
       const m = card.querySelector('.card-meter'); if (m) { m.style.visibility = 'visible'; m.firstChild.style.width = pct + '%'; }
@@ -2965,6 +3144,19 @@
   $('fwdBtn').addEventListener('click', () => { nudge(NUDGE); showChrome(); });
   $('tocBtn').addEventListener('click', () => openSheet(tocSheet));
   editBtn.addEventListener('click', () => setEditing(!editing));
+  $('editDone').addEventListener('click', () => setEditing(false));
+  // The "⋯" menu: opens on tap, closes after a choice or a tap elsewhere.
+  const morePop = $('morePop');
+  $('moreBtn').addEventListener('click', (e) => { e.stopPropagation(); morePop.classList.toggle('hidden'); });
+  morePop.addEventListener('click', () => morePop.classList.add('hidden'));
+  document.addEventListener('click', () => morePop.classList.add('hidden'));
+  const helpSheet = $('helpSheet');
+  const seenTip = () => { if (!settings.tipSeen) { settings.tipSeen = 1; saveSettings(); $('tipCard').classList.add('hidden'); } };
+  $('helpBtn').addEventListener('click', () => { seenTip(); openSheet(helpSheet); });
+  $('tipOpen').addEventListener('click', () => { seenTip(); openSheet(helpSheet); });
+  $('tipClose').addEventListener('click', seenTip);
+  $('helpClose').addEventListener('click', () => closeSheet(helpSheet));
+  $('viewBtn').addEventListener('click', () => { settings.tiles = !settings.tiles; saveSettings(); renderLibrary(); });
   fsBtn.addEventListener('click', toggleFullscreen);
   $('tocClose').addEventListener('click', () => closeSheet(tocSheet));
   $('themeBtn').addEventListener('click', () => openSheet(themeSheet));
