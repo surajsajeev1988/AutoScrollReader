@@ -108,7 +108,7 @@
   }
   #foot .foot-track { display: none; }   /* the line above already shows progress */
   .foot-text {
-    display: flex; justify-content: space-between; gap: 12px; margin-bottom: 0;
+    display: flex; justify-content: space-between; gap: 12px; margin-bottom: 0; min-height: 14px;
     font-family: var(--sans); font-size: 11.5px; color: var(--muted);
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
@@ -723,6 +723,20 @@
 
   /* Bedtime: dim amber on black, for a dark room. */
   [data-theme="ember"] { --bg:#000000; --panel:#0d0906; --panel-2:#171008; --ink:#e0a060; --muted:#8a6338; --line:#22170b; --accent:#c9772e; --accent-ink:#000000; --shadow:rgba(0,0,0,0.5); color-scheme: dark; }
+
+  /* Reading switch in the Appearance sheet */
+  .ap-switch { display: flex; align-items: center; gap: 14px; margin: 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+  .ap-switch span { flex: 1; display: grid; gap: 3px; }
+  .ap-switch b { font: 600 15px var(--sans); color: var(--ink); }
+  .ap-switch i { font: 400 13px/1.4 var(--sans); color: var(--muted); font-style: normal; }
+  .ap-switch input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+  /* "Where was I": a shade over the lines already read, with a mark at the place. */
+  #recap {
+    position: absolute; left: 0; right: 0; z-index: 2; pointer-events: none;
+    background: color-mix(in srgb, var(--bg) 58%, transparent);
+    border-bottom: 2px solid var(--accent); display: flex; align-items: flex-end; justify-content: center;
+  }
+  #recapNote { transform: translateY(50%); background: var(--accent); color: var(--accent-ink); font: 600 12px var(--sans); padding: 4px 12px; border-radius: 999px; }
   @media (prefers-reduced-motion: reduce) {
     #app *, #app *::before, #app *::after { transition: none !important; animation: none !important; }
   }
@@ -792,6 +806,7 @@
       </div>
       <div class="view-tabs hidden" id="viewTabs" role="tablist">
         <button class="vtab" id="tabLibrary" role="tab" aria-selected="true">Library</button>
+        <button class="vtab" id="tabFinished" role="tab" aria-selected="false">Finished</button>
         <button class="vtab" id="tabArchive" role="tab" aria-selected="false">Archive</button>
       </div>
       <div class="tip hidden" id="tipCard"><span>New here? See how the taps work.</span><button class="btn tiny" id="tipOpen">Show me</button><button class="btn tiny" id="tipClose" aria-label="Dismiss">×</button></div>
@@ -832,6 +847,7 @@
     <div id="reader" tabindex="0"><div id="content"></div></div>
 
     <div id="speedPop" aria-hidden="true"></div>
+    <div id="recap" class="hidden" aria-hidden="true"><span id="recapNote"></span></div>
     <div id="bar">
       <div class="bar-inner">
         <div id="status"></div>
@@ -898,6 +914,8 @@
           <summary>More colours</summary>
           <div class="swatches" id="swatches"></div>
         </details>
+        <div class="sheet-sub">Reading</div>
+        <label class="ap-switch"><span><b>Slow down for dense passages</b><i>Eases off through long, packed paragraphs and picks up again after.</i></span><input type="checkbox" id="autoSlow"></label>
         <div class="sheet-sub">Font</div>
         <div class="face-grid" id="faceGrid">
         </div>
@@ -1472,6 +1490,8 @@
     $('apLight').setAttribute('aria-pressed', settings.theme === 'paper' ? 'true' : 'false');
   }
   const pickTheme = (id) => { settings.theme = id; saveSettings(); applyTheme(); };
+  $('autoSlow').checked = !!settings.autoSlow;
+  $('autoSlow').addEventListener('change', () => { settings.autoSlow = $('autoSlow').checked; saveSettings(); invalidate(); pace = 1; if (book) m(); });
   $('apDark').addEventListener('click', () => pickTheme('oled'));
   $('apLight').addEventListener('click', () => pickTheme('paper'));
   $('apReset').addEventListener('click', () => {
@@ -1539,6 +1559,7 @@
     const words = book && book.words ? book.words : (content.textContent.match(/\S+/g) || []).length;
     metrics = { padT, lineH, textH, words, wordsPerPx: words / textH };
     paintTicks(padT, textH);
+    measureDense(metrics.wordsPerPx);
     return metrics;
   }
   /* Small gaps in the progress line where chapters begin. Drawn whenever
@@ -1554,6 +1575,38 @@
       const t = document.createElement('i'); t.style.left = (at * 100).toFixed(2) + '%';
       box.appendChild(t);
     }
+  }
+  /* ---- slow down for dense passages (optional) ----
+     The speed is set from the book's average words per line. A long, packed
+     paragraph holds more words in the same height, so at a steady scroll it
+     goes by faster than the number says. With the switch on, the page eases
+     off there (never below three-quarters speed) and returns after. The
+     paragraph positions are measured once per layout; each frame only walks
+     an index and blends a number. */
+  let dense = null, denseAt = 0, pace = 1;
+  function measureDense(avgWpp) {
+    dense = null; denseAt = 0;
+    if (!settings.autoSlow || !blocks.length || !(avgWpp > 0)) return;
+    const list = [];
+    for (let i = 0; i < blocks.length; i++) {
+      const el = blocks[i], h = el.offsetHeight;
+      if (h < 4) continue;
+      const w = (el.textContent.match(/\S+/g) || []).length;
+      const f = w >= 60 ? Math.max(0.75, Math.min(1, avgWpp / (w / h))) : 1;
+      list.push(el.offsetTop, el.offsetTop + h, f);
+    }
+    dense = list;
+  }
+  function paceFactor(dt) {
+    let want = 1;
+    if (dense && settings.autoSlow) {
+      const y = pos + reader.clientHeight * 0.4;          // roughly where the eye is
+      while (denseAt + 3 < dense.length && dense[denseAt + 1] < y) denseAt += 3;
+      while (denseAt > 0 && dense[denseAt] > y) denseAt -= 3;
+      if (y >= dense[denseAt] && y <= dense[denseAt + 1]) want = dense[denseAt + 2];
+    }
+    pace += (want - pace) * Math.min(1, dt * 1.5);        // blend over about a second
+    return pace;
   }
   const invalidate = () => { metrics = null; };
   const maxScroll = () => Math.max(0, reader.scrollHeight - reader.clientHeight);
@@ -1614,7 +1667,10 @@
      taken after that point are ignored until the position is restored. */
   let lastAnchor = { b: 0, f: 0 };
   let anchorLayout = '';
-  const layoutKey = () => reader.clientWidth + 'x' + reader.clientHeight + '@' + font.value;
+  // Only the width and the text size move paragraphs. The height is left out on
+  // purpose: the page's height changes when the top row fills in or a bar shows,
+  // and counting that froze the saved place at wherever the book was opened.
+  const layoutKey = () => reader.clientWidth + '@' + font.value;
   const syncLayout = () => { anchorLayout = layoutKey(); };
   function noteAnchor() {
     if (opening || layoutKey() !== anchorLayout) return;
@@ -1707,7 +1763,7 @@
       ramp = rampTarget > ramp ? Math.min(rampTarget, ramp + dt / RAMP_UP) : Math.max(rampTarget, ramp - dt / rampDown);
       if (ramp <= 0 && rampTarget <= 0) { stop(); if (sleepNote) { if (sleptAt) sleptAt.rest = reader.scrollTop; flash(sleepNote); sleepNote = ''; } return; }
     }
-    pos += pxPerSec() * dt * ramp;
+    pos += pxPerSec() * dt * ramp * paceFactor(dt);
     countReading(dt * ramp);
     if (rampTarget > 0 && performance.now() > sleepAt) {
       sleepNote = 'Sleep timer: paused after 15 minutes';
@@ -1752,7 +1808,35 @@
     playBtn.textContent = '▶ Play';
   }
 
+  /* Back after a few days: open with the lines you had already read still
+     in view, dimmed, and a mark where you stopped. Nothing in the text is
+     changed: it is a see-through shade laid over the top of the page, and
+     it goes as soon as you play, tap or move the page. */
+  const RECAP_AFTER = 2 * 24 * 3600 * 1000;
+  let recapTop = null;
+  function showRecap(saved) {
+    hideRecap();
+    if (!saved || !(saved.p > 0.002) || saved.p >= 0.99 || !saved.t || Date.now() - saved.t < RECAP_AFTER) return;
+    const lift = Math.round(reader.clientHeight * 0.3);          // show this much more of what came before
+    const before = reader.scrollTop;
+    if (before < lift) return;
+    reader.scrollTop = before - lift;
+    recapTop = reader.scrollTop;
+    const days = Math.round((Date.now() - saved.t) / 86400000);
+    const box = $('recap');
+    box.style.top = reader.offsetTop + 'px';
+    box.style.height = Math.round(before - reader.scrollTop) + 'px';   // down to the old top of the screen
+    $('recapNote').textContent = 'You stopped here ' + (days >= 14 ? Math.round(days / 7) + ' weeks' : days + ' days') + ' ago';
+    box.classList.remove('hidden');
+  }
+  function hideRecap() {
+    if (recapTop === null) return;
+    recapTop = null;
+    $('recap').classList.add('hidden');
+  }
+
   function play() {
+    hideRecap();
     if (speaking) stopSpeak();
     if (!book) return;
     if (reader.scrollTop >= endScroll() - 0.5) { flash('End of the book. Drag the bar at the top to go back.'); return; }
@@ -2141,6 +2225,7 @@
       // Places saved before blocks were counted paragraph by paragraph:
       // use the stored fraction of the book, which is close rather than exact.
       if (!resume && saved && saved.p > 0) seekTo(saved.p * endScroll());
+      showRecap(saved);
       render();
       settleImages();
       rec.opened = Date.now();
@@ -2176,6 +2261,7 @@
     app.classList.remove('immersive', 'nobar');
     setEditing(false);
     if (book) saveProgress();
+    hideRecap();
     book = null; blocks = []; sections = [];
     content.textContent = '';
     readerView.classList.add('hidden');
@@ -2188,12 +2274,15 @@
     if (!book || !blocks.length || opening) return;
     noteAnchor();
     const end = endScroll();
+    const was = book.progress;
     book.progress = {
       v: 2, b: lastAnchor.b, f: lastAnchor.f,
       p: end > 0 ? Math.min(1, reader.scrollTop / end) : 0,
       t: Date.now(),
       d: book.driveId || null
     };
+    // The day the book was finished: set the first time the end is reached, then kept.
+    if (book.progress.p >= 0.99) book.progress.done = (was && was.done) || Date.now();
     if (!writeProg(book.id, book.progress)) putBook(book).catch(() => {});
     queueSync(book.id, book.progress);
   }
@@ -2251,7 +2340,7 @@
     meter.appendChild(bar);
     const label = document.createElement('div');
     label.className = 'card-pct';
-    label.textContent = pct >= 99 ? 'Finished' : pct > 0 ? pct + '% read' : 'Not started';
+    label.textContent = pct >= 99 ? finishedLabel(b.progress) : pct > 0 ? pct + '% read' : 'Not started';
 
     card.append(coverEl(b), title, author, meter, label);
     // Saved here. Gold instead of green when Drive does not have it yet.
@@ -2267,6 +2356,12 @@
     return card;
   }
 
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function finishedLabel(pr) {
+    if (!pr || !pr.done) return 'Finished';
+    const d = new Date(pr.done);
+    return 'Finished ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '');
+  }
   function stateChip(kind, label, onTap) {
     const el = document.createElement('span');
     el.className = 'card-state ' + kind;
@@ -2396,7 +2491,14 @@
     const el = (cls, text) => { const x = document.createElement('div'); x.className = cls; if (text != null) x.textContent = text; return x; };
     const meter = el('hero-meter'); const bar = document.createElement('i'); bar.style.width = pct + '%'; meter.appendChild(bar);
     const foot = el('hero-foot');
-    foot.append(el('hero-pct', pct + '% read' + (d ? ' · tap to download' : '')), el('hero-go', 'Resume'));
+    // About how long is left at the current speed (needs the book on this phone).
+    let left = '';
+    if (!d && it.words && settings.wpm) {
+      const mins = Math.round(it.words * (1 - Math.min(1, (it.progress && it.progress.p) || 0)) / settings.wpm);
+      left = mins >= 60 ? Math.floor(mins / 60) + ' h ' + String(mins % 60).padStart(2, '0') + ' min left'
+           : Math.max(1, mins) + ' min left';
+    }
+    foot.append(el('hero-pct', pct + '% read' + (left ? ' · about ' + left : d ? ' · tap to download' : '')), el('hero-go', 'Resume'));
     box.append(el('hero-k', 'Continue reading'), el('hero-title', title));
     if (author) box.append(el('hero-author', author));
     box.append(meter, foot);
@@ -2434,11 +2536,22 @@
     const everything = books.concat(remote);
     for (const it of everything) it.archived = isArchived(it);
     const nArch = everything.filter((it) => it.archived).length;
+    // Finished books (read to the end) leave the main list for their own tab.
+    const isDone = (it) => pctOf(it) >= 99;
+    const nFin = everything.filter((it) => !it.archived && isDone(it)).length;
+    if (view === 'finished' && !nFin) { view = 'library'; markTabs(); }
     $('tabArchive').textContent = 'Archive' + (nArch ? ' (' + nArch + ')' : '');
-    $('tabLibrary').textContent = 'Library (' + (everything.length - nArch) + ')';
-    const all = everything.filter((it) => (view === 'archive') === it.archived);
+    $('tabFinished').textContent = 'Finished (' + nFin + ')';
+    $('tabLibrary').textContent = 'Library (' + (everything.length - nArch - nFin) + ')';
+    $('tabFinished').classList.toggle('hidden', !nFin);
+    $('tabArchive').classList.toggle('hidden', !caps.archive);
+    $('viewTabs').classList.toggle('hidden', !(caps.archive || nFin));
+    const all = everything.filter((it) => view === 'archive' ? it.archived
+      : !it.archived && (view === 'finished') === isDone(it));
+    const doneAt = (it) => (it.progress && it.progress.done) || it.lastRead || 0;
     const q = searchQuery(), searching = q.length > 0;
-    const items = (searching ? all.filter((it) => matches(it, q)) : all).sort(SORTS[settings.sort] || SORTS.recent);
+    const items = (searching ? all.filter((it) => matches(it, q)) : all)
+      .sort(view === 'finished' ? (a, b) => doneAt(b) - doneAt(a) : (SORTS[settings.sort] || SORTS.recent));
 
     // How many of the books in view are saved on this phone.
     const line = $('offlineLine');
@@ -2454,7 +2567,7 @@
     grid.textContent = '';
     shelf.textContent = '';
     drop.classList.toggle('hidden', items.length > 0);
-    drop.classList.toggle('hidden', items.length > 0 || searching || view === 'archive');
+    drop.classList.toggle('hidden', everything.length > 0 || searching || view !== 'library');
     libCount.textContent = searching ? items.length + ' of ' + all.length
       : items.length ? items.length + (items.length === 1 ? ' book' : ' books') : '';
     // Drive-only books can be managed too (archive, rename, delete), so Edit shows for any book.
@@ -2466,7 +2579,7 @@
     const started = all.filter((b) => { const p = pctOf(b); return p > 0 && p < 99; }).sort(SORTS.recent);
     continueWrap.classList.toggle('hidden', started.length === 0 || searching || view === 'archive');
     // The latest one gets the big card; the next two sit under "Also reading".
-    const lead = (searching || view === 'archive') ? null : (started[0] || null);
+    const lead = (searching || view !== 'library') ? null : (started[0] || null);
     paintHero(lead);
     const onShelf = lead ? started.slice(1, 3) : [];
     continueWrap.classList.toggle('hidden', !lead);
@@ -2476,9 +2589,14 @@
     // books as the shelf above, so they are shown once.
     const once = settings.sort === 'recent' && !!lead;
     const below = once ? items.filter((b) => b !== lead && !onShelf.includes(b)) : items;
-    $('allLabel').textContent = once ? 'More books' : 'All books';
+    $('allLabel').textContent = view === 'finished' ? 'Finished, latest first' : once ? 'More books' : 'All books';
     $('allLabel').classList.toggle('hidden', below.length === 0);
     for (const b of below) grid.appendChild(b.remote ? makeDriveCard(b.remote, b.progress) : makeCard(b));
+    if (!searching && !items.length && view === 'library' && everything.length) {
+      const none = document.createElement('div'); none.className = 'search-empty';
+      none.textContent = lead ? '' : 'Every book here is finished. They are under the Finished tab.';
+      if (none.textContent) grid.appendChild(none);
+    }
     if (!searching && !items.length && view === 'archive') {
       const none = document.createElement('div'); none.className = 'search-empty';
       none.textContent = 'Nothing archived yet. Finished books can be moved here from the book’s × menu in Edit, or when you reach the end.';
@@ -2571,7 +2689,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '19 Nov · 3';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '19 Nov · 4';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
@@ -2792,8 +2910,7 @@
       if (caps.covers) {
         try { mergeThumbs(await gasCall('getThumbs')); } catch (_) { /* covers are a nicety */ }
       }
-      $('viewTabs').classList.toggle('hidden', !caps.archive);
-      if (!caps.archive) view = 'library';
+      if (!caps.archive && view === 'archive') view = 'library';
       driveFiles = files || [];
       try { localStorage.setItem('autoscroll-reader/drive-list', JSON.stringify(driveFiles)); } catch (_) {}
       if (prog) mergeRemote(prog);
@@ -2834,7 +2951,7 @@
     const a = document.createElement('div'); a.className = 'card-author';
     a.textContent = meta.au || (pct > 0 ? 'Read on another device' : 'Not on this device yet');
     const l = document.createElement('div'); l.className = 'card-pct';
-    l.textContent = pct > 0 ? pct + '% read' : '↓ ' + sizeLabel(d.size);
+    l.textContent = pct >= 99 ? finishedLabel(pr) : pct > 0 ? pct + '% read' : '↓ ' + sizeLabel(d.size);
     card.append(cover, t, a, l);
     const meter = document.createElement('div'); meter.className = 'card-meter';
     const bar = document.createElement('i'); bar.style.width = pct + '%'; meter.appendChild(bar);
@@ -3204,9 +3321,11 @@
   });
   $('tabLibrary').addEventListener('click', () => { view = 'library'; markTabs(); renderLibrary(); });
   $('tabArchive').addEventListener('click', () => { view = 'archive'; markTabs(); renderLibrary(); });
+  $('tabFinished').addEventListener('click', () => { view = 'finished'; markTabs(); renderLibrary(); });
   function markTabs() {
     $('tabLibrary').setAttribute('aria-selected', view === 'library' ? 'true' : 'false');
     $('tabArchive').setAttribute('aria-selected', view === 'archive' ? 'true' : 'false');
+    $('tabFinished').setAttribute('aria-selected', view === 'finished' ? 'true' : 'false');
   }
   $('removeDrive').addEventListener('click', () => doRemove(true));
   // The button's own words say whether the text is moving; colour follows them.
@@ -3281,7 +3400,10 @@
   });
 
   // Belt and braces: if anything still nudges the page sideways, put it back.
-  reader.addEventListener('scroll', () => { if (reader.scrollLeft) reader.scrollLeft = 0; }, { passive: true });
+  reader.addEventListener('scroll', () => {
+    if (reader.scrollLeft) reader.scrollLeft = 0;
+    if (recapTop !== null && Math.abs(reader.scrollTop - recapTop) > 24) hideRecap();
+  }, { passive: true });
 
   /* ---- pinch to resize the text ----
      Two fingers spread or pinch change the font size (same as the
