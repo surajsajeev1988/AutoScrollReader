@@ -152,6 +152,24 @@
   #app .grid .card-pct, #app .shelf .card-pct { grid-area: pct; text-align: right; white-space: nowrap; padding-left: 4px; }
   #app .grid .card.remote .card-pct { max-width: 110px; white-space: normal; line-height: 1.3; }
   #app .cloud { right: 2px; bottom: 2px; font-size: 9px; padding: 1px 4px; }
+  /* Swipe a row sideways for quick actions, like a watchlist. The row's
+     contents slide; the buttons wait underneath at either end. */
+  #app .grid:not(.tiles) .card, #app .shelf .card { overflow: hidden; touch-action: pan-y; }
+  .card > :not(.swipe-tray) { transition: transform .22s ease; }
+  .card.sw-drag > :not(.swipe-tray) { transition: none; }
+  .card.sw-on > :not(.swipe-tray):not(.card-del) { transform: translateX(var(--sx, 0px)); }
+  .swipe-tray { position: absolute; top: 0; bottom: 0; display: none; z-index: 0; }
+  .card.sw-on.sw-l .swipe-tray.l, .card.sw-on.sw-r .swipe-tray.r { display: flex; }
+  .swipe-tray.l { left: 0; } .swipe-tray.r { right: 0; }
+  .swipe-tray span {
+    width: 74px; display: grid; place-items: center; align-content: center; gap: 3px;
+    font: 600 12px var(--sans); color: #fff; cursor: pointer;
+  }
+  .swipe-tray span b { font-size: 19px; line-height: 1; font-weight: 600; }
+  .swipe-tray .sw-done { background: #2f9e5b; }
+  .swipe-tray .sw-get  { background: #2f6fd6; }
+  .swipe-tray .sw-arch { background: #c98a1b; }
+  .swipe-tray .sw-del  { background: #d64545; }
   #app .grid .card-del, #app .shelf .card-del { top: 50%; right: 0; transform: translateY(-50%); }
   /* Where each book lives, at the end of its row:
        green phone with a tick = saved on this phone, reads offline;
@@ -2283,6 +2301,7 @@
       d: book.driveId || null
     };
     // The day the book was finished: set the first time the end is reached, then kept.
+    if (was && was.manual && was.done) { book.progress.done = was.done; book.progress.manual = 1; }
     if (isFin({ p: book.progress.p, done: was && was.done })) book.progress.done = (was && was.done) || Date.now();
     if (!writeProg(book.id, book.progress)) putBook(book).catch(() => {});
     queueSync(book.id, book.progress);
@@ -2325,7 +2344,7 @@
 
   // Finished: read to the end. Once marked, it stays finished unless you go well
   // back into the book, so reopening it at the last page cannot knock it off the shelf.
-  function isFin(pr) { return !!pr && ((pr.p || 0) >= 0.985 || (!!pr.done && (pr.p || 0) >= 0.9)); }
+  function isFin(pr) { return !!pr && ((pr.p || 0) >= 0.985 || (!!pr.done && (!!pr.manual || (pr.p || 0) >= 0.9))); }
   const pctOf = (b) => Math.round(((b.progress && b.progress.p) || 0) * 100);
 
   function makeCard(b) {
@@ -2354,11 +2373,108 @@
       () => showNotice(onlyHere
         ? b.title + ' is saved on this phone only. It is not in your Drive folder yet.'
         : b.title + ' is saved on this phone and reads without internet.')));
-    card.addEventListener('click', () => { if (!editing) openBook(b); });
+    card.addEventListener('click', () => { if (!editing && !swBlock(card)) openBook(b); });
 
     card.appendChild(delButton(() => askRemove({ title: b.title, book: b })));
+    const fin = isFin(b.progress);
+    addSwipe(card,
+      [fin ? ['sw-done', '↺', 'Unfinish', () => setFinished(b, false)]
+           : ['sw-done', '✓', 'Finished', () => setFinished(b, true)]],
+      archAction(b.driveId, b.title).concat([['sw-del', '×', 'Delete', () => askRemove({ title: b.title, book: b })]]));
     return card;
   }
+
+  /* ---- swipe a row for quick actions ----
+     Swipe right: Finished (or Unfinish) for a saved book, Save for a Drive one.
+     Swipe left: Archive (or Restore) when Drive has the book, and Delete,
+     which opens the usual remove sheet so nothing goes by accident. */
+  function archAction(driveId, title) {
+    if (!caps.archive || !driveId) return [];
+    const inArch = archivedIds().has(driveId);
+    return [['sw-arch', inArch ? '↩' : '▤', inArch ? 'Restore' : 'Archive', () => setArchived(driveId, !inArch, title)]];
+  }
+  function setFinished(b, on) {
+    const pr = Object.assign({ v: 2, b: 0, f: 0, p: 0 }, b.progress || {});
+    if (on) { pr.done = Date.now(); pr.manual = 1; }
+    else {
+      delete pr.done; delete pr.manual;
+      if ((pr.p || 0) >= 0.9) { pr.p = 0; pr.b = 0; pr.f = 0; }   // read to the end: start again from the top
+    }
+    pr.t = Date.now(); pr.d = b.driveId || null;
+    b.progress = pr;
+    if (!writeProg(b.id, pr)) putBook(b).catch(() => {});
+    queueSync(b.id, pr);
+    showNotice(on ? 'Marked as finished: ' + b.title + '.' : 'Back in your Library: ' + b.title + '.');
+    renderLibrary();
+  }
+  const TRAY_W = 74;
+  let swOpen = null, swSkipClick = false;
+  function swClose(card) {
+    if (!card) return;
+    card.style.setProperty('--sx', '0px');
+    setTimeout(() => { if (card !== swOpen && !card.classList.contains('sw-drag')) card.classList.remove('sw-on'); }, 240);
+    if (swOpen === card) swOpen = null;
+  }
+  function addSwipe(card, left, right) {
+    const tray = (side, list) => {
+      const t = document.createElement('div'); t.className = 'swipe-tray ' + side;
+      for (const [cls, icon, label, fn] of list) {
+        const s = document.createElement('span'); s.className = cls; s.setAttribute('role', 'button');
+        const i = document.createElement('b'); i.textContent = icon;
+        s.append(i, label);
+        s.addEventListener('click', (e) => { e.stopPropagation(); swClose(card); fn(); });
+        t.appendChild(s);
+      }
+      card.appendChild(t);
+      return list.length * TRAY_W;
+    };
+    const maxR = left.length ? tray('l', left) : 0;      // how far it can go right
+    const maxL = right.length ? tray('r', right) : 0;    // how far it can go left
+    let sx = 0, sy = 0, base = 0, x = 0, mode = 0;       // mode: 0 undecided, 1 sideways, -1 scrolling
+    card.addEventListener('touchstart', (e) => {
+      if (editing || e.touches.length !== 1 || card.closest('.tiles')) { mode = -1; return; }
+      if (swOpen && swOpen !== card) swClose(swOpen);
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY; mode = 0;
+      base = swOpen === card ? parseFloat(card.style.getPropertyValue('--sx')) || 0 : 0;
+    }, { passive: true });
+    card.addEventListener('touchmove', (e) => {
+      if (mode < 0) return;
+      const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+      if (mode === 0) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        mode = Math.abs(dx) > Math.abs(dy) * 1.3 ? 1 : -1;
+        if (mode < 0) return;
+        card.classList.add('sw-on', 'sw-drag');
+      }
+      e.preventDefault();
+      x = base + dx;
+      // A little give past the buttons, none where there are no buttons.
+      if (x > maxR) x = maxR + (x - maxR) * 0.25;
+      if (x < -maxL) x = -maxL + (x + maxL) * 0.25;
+      if (!maxR && x > 0) x = 0;
+      if (!maxL && x < 0) x = 0;
+      card.style.setProperty('--sx', x + 'px');
+      card.classList.toggle('sw-l', x > 0); card.classList.toggle('sw-r', x < 0);
+    }, { passive: false });
+    const end = () => {
+      if (mode !== 1) { mode = 0; return; }
+      mode = 0; swSkipClick = true; setTimeout(() => { swSkipClick = false; }, 350);
+      card.classList.remove('sw-drag');
+      const snap = x > maxR / 2 && maxR ? maxR : x < -maxL / 2 && maxL ? -maxL : 0;
+      if (!snap) { swClose(card); return; }
+      card.style.setProperty('--sx', snap + 'px');
+      swOpen = card;
+    };
+    card.addEventListener('touchend', end, { passive: true });
+    card.addEventListener('touchcancel', end, { passive: true });
+  }
+  // A tap on an open row closes it instead of opening the book.
+  function swBlock(card) {
+    if (swSkipClick) return true;
+    if (swOpen === card) { swClose(card); return true; }
+    return false;
+  }
+  document.addEventListener('touchstart', (e) => { if (swOpen && !swOpen.contains(e.target)) swClose(swOpen); }, { passive: true });
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function finishedLabel(pr) {
@@ -2693,7 +2809,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '23 Nov · 1';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '23 Nov · 2';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
@@ -2961,11 +3077,14 @@
     const bar = document.createElement('i'); bar.style.width = pct + '%'; meter.appendChild(bar);
     if (!pct) meter.style.visibility = 'hidden';
     card.appendChild(meter);
-    card.addEventListener('click', () => { if (!editing) fetchFromDrive(d); });
+    card.addEventListener('click', () => { if (!editing && !swBlock(card)) fetchFromDrive(d); });
     // The arrow saves a copy on this phone without opening the book.
     card.appendChild(stateChip('get', 'Save on this phone', () => fetchInBackground(d, false)));
     if (dlNow.has(d.id)) requestAnimationFrame(() => paintDl(d.id));
     card.appendChild(delButton(() => askRemove({ title, remoteOnly: true, drive: d })));
+    addSwipe(card,
+      [['sw-get', '↓', 'Save', () => fetchInBackground(d, false)]],
+      archAction(d.id, title).concat([['sw-del', '×', 'Delete', () => askRemove({ title, remoteOnly: true, drive: d })]]));
     return card;
   }
 
@@ -3333,37 +3452,6 @@
   }
   $('removeDrive').addEventListener('click', () => doRemove(true));
 
-  /* ---- swipe sideways on the library to change tab ----
-     Left goes to the next tab, right to the one before, among the tabs that
-     are showing. A swipe that starts on a row that itself slides sideways
-     (the button strip, the cover shelf) is left to that row. */
-  (function () {
-    let sx = 0, sy = 0, ok = false;
-    const slides = (el) => {
-      for (; el && el !== libraryView; el = el.parentElement) {
-        if (el.scrollWidth > el.clientWidth + 4 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
-        if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') return true;
-      }
-      return false;
-    };
-    libraryView.addEventListener('touchstart', (e) => {
-      ok = e.touches.length === 1 && !slides(e.target);
-      sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-    }, { passive: true });
-    libraryView.addEventListener('touchend', (e) => {
-      if (!ok || e.touches.length) return;
-      ok = false;
-      const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-      if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
-      if ($('viewTabs').classList.contains('hidden')) return;
-      const tabs = [['library', 'tabLibrary'], ['finished', 'tabFinished'], ['archive', 'tabArchive']]
-        .filter((x) => !$(x[1]).classList.contains('hidden')).map((x) => x[0]);
-      const next = tabs[tabs.indexOf(view) + (dx < 0 ? 1 : -1)];
-      if (!next) return;
-      view = next; markTabs(); renderLibrary();
-      window.scrollTo(0, 0); libraryView.scrollTop = 0;
-    }, { passive: true });
-  })();
   // The button's own words say whether the text is moving; colour follows them.
   new MutationObserver(() => playBtn.classList.toggle('playing', playBtn.textContent.indexOf('Pause') >= 0))
     .observe(playBtn, { childList: true, characterData: true, subtree: true });
