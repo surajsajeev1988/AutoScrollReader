@@ -2693,7 +2693,7 @@
      Code.gs through its web address with a private key, set once by opening
      the setup link (…#key=…&api=…). With no key, or no internet, it is a
      purely local reader. */
-  const BUILD = '19 Nov · 5';   // shown at the foot of the library; also how the page notices an update
+  const BUILD = '23 Nov · 1';   // shown at the foot of the library; also how the page notices an update
   const IN_GAS = !!(window.google && google.script && google.script.run);
   const API_STORE = 'autoscroll-reader/api';
   const api = (() => {
@@ -3332,6 +3332,38 @@
     $('tabFinished').setAttribute('aria-selected', view === 'finished' ? 'true' : 'false');
   }
   $('removeDrive').addEventListener('click', () => doRemove(true));
+
+  /* ---- swipe sideways on the library to change tab ----
+     Left goes to the next tab, right to the one before, among the tabs that
+     are showing. A swipe that starts on a row that itself slides sideways
+     (the button strip, the cover shelf) is left to that row. */
+  (function () {
+    let sx = 0, sy = 0, ok = false;
+    const slides = (el) => {
+      for (; el && el !== libraryView; el = el.parentElement) {
+        if (el.scrollWidth > el.clientWidth + 4 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
+        if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') return true;
+      }
+      return false;
+    };
+    libraryView.addEventListener('touchstart', (e) => {
+      ok = e.touches.length === 1 && !slides(e.target);
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    }, { passive: true });
+    libraryView.addEventListener('touchend', (e) => {
+      if (!ok || e.touches.length) return;
+      ok = false;
+      const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
+      if ($('viewTabs').classList.contains('hidden')) return;
+      const tabs = [['library', 'tabLibrary'], ['finished', 'tabFinished'], ['archive', 'tabArchive']]
+        .filter((x) => !$(x[1]).classList.contains('hidden')).map((x) => x[0]);
+      const next = tabs[tabs.indexOf(view) + (dx < 0 ? 1 : -1)];
+      if (!next) return;
+      view = next; markTabs(); renderLibrary();
+      window.scrollTo(0, 0); libraryView.scrollTop = 0;
+    }, { passive: true });
+  })();
   // The button's own words say whether the text is moving; colour follows them.
   new MutationObserver(() => playBtn.classList.toggle('playing', playBtn.textContent.indexOf('Pause') >= 0))
     .observe(playBtn, { childList: true, characterData: true, subtree: true });
